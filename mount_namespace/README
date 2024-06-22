@@ -1,0 +1,66 @@
+# mount namespace实验
+
+[~]->$ cd
+[~]->$ mkdir iso
+[~]->$ cd iso
+[iso]->$ mkdir -p iso1/dir1
+[iso]->$ mkdir -p iso2/dir2  
+[iso]->$ mkisofs -o 1.iso iso1  # 将iso1目录制作成镜像文件1.iso
+[iso]->$ mkisofs -o 2.iso iso2  # 将iso2目录制作成镜像文件2.iso
+[iso]->$ ls
+1.iso  2.iso  iso1  iso2
+[iso]->$ sudo mkdir /mnt/{iso1,iso2}
+[iso]->$ ls -l /proc/$$/ns/mnt
+lrwxrwxrwx 1 ... /proc/26276/ns/mnt -> 'mnt:[4026531840]'
+ 
+# 在root namespace中挂载1.iso到/mnt/iso1目录
+[iso]->$ sudo mount 1.iso /mnt/iso1  
+mount: /mnt/iso: WARNING: device write-protected, mounted read-only.
+[iso]->$ mount | grep iso1
+/home/longshuai/iso/1.iso on /mnt/iso1 type iso9660
+ 
+# 创建mount+uts namespace
+[iso]->$ sudo unshare -m -u /bin/bash
+
+# 虽然这个namespace是mount+uts的namespace
+# 但注意mnt namespace和uts namespace的inode并不一样
+root@longshuai-vm:/home/longshuai/iso# ls -l /proc/$$/ns
+lrwxrwxrwx ... cgroup -> 'cgroup:[4026531835]'
+lrwxrwxrwx ... ipc -> 'ipc:[4026531839]'
+lrwxrwxrwx ... mnt -> 'mnt:[4026532588]'
+lrwxrwxrwx ... net -> 'net:[4026531992]'
+lrwxrwxrwx ... pid -> 'pid:[4026531836]'
+lrwxrwxrwx ... pid_for_children -> 'pid:[4026531836]'
+lrwxrwxrwx ... user -> 'user:[4026531837]'
+lrwxrwxrwx ... uts -> 'uts:[4026532589]'
+ 
+# 修改主机名为ns1
+root@longshuai-vm:/home/longshuai/iso# hostname ns1
+root@longshuai-vm:/home/longshuai/iso# exec $SHELL
+ 
+# 在namespace中，可以看到root namespace中的挂载信息
+root@ns1:/home/longshuai/iso# mount | grep 'iso1' 
+/home/longshuai/iso/1.iso1 on /mnt/iso1 type iso9660
+ 
+# namespace中挂载2.iso2
+root@ns1:/home/longshuai/iso# mount 2.iso2 /mnt/iso2/
+mount: /mnt/iso2: WARNING: device write-protected, mounted read-only.
+root@ns1:/home/longshuai/iso# mount | grep 'iso[12]'
+/home/longshuai/iso/1.iso1 on /mnt/iso1 type iso9660
+/home/longshuai/iso/2.iso2 on /mnt/iso2 type iso9660
+ 
+# 在namespace中卸载iso1
+root@ns1:/home/longshuai/iso# umount /mnt/iso1/
+root@ns1:/home/longshuai/iso# mount | grep 'iso[12]' 
+/home/longshuai/iso/2.iso2 on /mnt/iso2 type iso9660
+root@ns1:/home/longshuai/iso# ls /mnt/iso1/
+root@ns1:/home/longshuai/iso# ls /mnt/iso2
+dir2
+ 
+#### 打开另一个Shell终端窗口
+# iso1挂载仍然存在，且没有iso2的挂载信息
+[iso]->$ mount | grep iso
+/home/longshuai/iso/1.iso1 on /mnt/iso1 type iso9660
+[iso]->$ ls /mnt/iso2
+[iso]->$ ls /mnt/iso1
+dir1

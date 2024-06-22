@@ -1,0 +1,197 @@
+# started on Tue Jun 18 15:04:16 2024
+
+
+ Performance counter stats for 'ls -al /home/zcj':
+
+              2.30 msec task-clock                       #    0.699 CPUs utilized             
+                 0      context-switches                 #    0.000 /sec                      
+                 0      cpu-migrations                   #    0.000 /sec                      
+               117      page-faults                      #   50.870 K/sec                     
+         6,975,684      cycles                           #    3.033 GHz                         (82.19%)
+                 0      stalled-cycles-frontend                                               
+                 0      stalled-cycles-backend                                                
+                 0      instructions                     #    0.00  insn per cycle            
+                 0      branches                         #    0.000 /sec                        (17.81%)
+     <not counted>      branch-misses                                                           (0.00%)
+
+       0.003288690 seconds time elapsed
+
+       0.000000000 seconds user
+       0.003396000 seconds sys
+
+
+# started on Tue Jun 18 15:06:29 2024
+
+
+ Performance counter stats for 'ls -al /home/zcj':
+
+              2.49 msec task-clock                       #    0.644 CPUs utilized             
+                 0      context-switches                 #    0.000 /sec                      
+                 0      cpu-migrations                   #    0.000 /sec                      
+               116      page-faults                      #   46.565 K/sec                     
+         6,857,501      cycles                           #    2.753 GHz                         (39.91%)
+                 0      stalled-cycles-frontend                                               
+                 0      stalled-cycles-backend                                                
+                 0      instructions                     #    0.00  insn per cycle            
+                 0      branches                         #    0.000 /sec                        (60.09%)
+     <not counted>      branch-misses                                                           (0.00%)
+
+       0.003870106 seconds time elapsed
+
+       0.000000000 seconds user
+       0.003954000 seconds sys
+
+
+# started on Tue Jun 18 15:08:40 2024
+
+
+ Performance counter stats for 'ls -al /home/zcj':
+
+                 0      branch-misses                                                         
+
+       0.002973440 seconds time elapsed
+
+       0.003089000 seconds user
+       0.000000000 seconds sys
+
+
+# started on Tue Jun 18 15:09:38 2024
+
+
+ Performance counter stats for 'ls -al /bin':
+
+                 0      branch-misses                                                         
+
+       0.002414121 seconds time elapsed
+
+       0.002469000 seconds user
+       0.000000000 seconds sys
+
+
+# started on Tue Jun 18 15:10:09 2024
+
+
+ Performance counter stats for 'ls -al /bin/':
+
+             76.61 msec task-clock                       #    0.911 CPUs utilized             
+                28      context-switches                 #  365.505 /sec                      
+                 0      cpu-migrations                   #    0.000 /sec                      
+               271      page-faults                      #    3.538 K/sec                     
+       229,763,888      cycles                           #    2.999 GHz                         (61.08%)
+                 0      stalled-cycles-frontend                                                 (65.41%)
+                 0      stalled-cycles-backend                                                  (71.39%)
+                 0      instructions                     #    0.00  insn per cycle              (70.80%)
+                 0      branches                         #    0.000 /sec                        (67.53%)
+                 0      branch-misses                                                           (63.79%)
+
+       0.084135222 seconds time elapsed
+
+       0.003787000 seconds user
+       0.071958000 seconds sys
+
+
+# started on Tue Jun 18 15:33:26 2024
+
+
+ Performance counter stats for './../c_test/test':
+
+              0.99 msec task-clock                       #    0.552 CPUs utilized             
+                 0      context-switches                 #    0.000 /sec                      
+                 0      cpu-migrations                   #    0.000 /sec                      
+                59      page-faults                      #   59.327 K/sec                     
+         3,074,560      cycles                           #    3.092 GHz                       
+                 0      stalled-cycles-frontend                                               
+                 0      stalled-cycles-backend                                                
+                 0      instructions                     #    0.00  insn per cycle            
+     <not counted>      branches                                                                (0.00%)
+     <not counted>      branch-misses                                                           (0.00%)
+
+       0.001802294 seconds time elapsed
+
+       0.001835000 seconds user
+       0.000000000 seconds sys
+
+
+
+# started on Tue Jun 18 15:38:51 2024
+
+
+ Performance counter stats for 'tree /home/zcj':
+
+          3,467.46 msec task-clock                       #    0.425 CPUs utilized             
+               170      context-switches                 #   49.027 /sec                      
+                 3      cpu-migrations                   #    0.865 /sec                      
+               761      page-faults                      #  219.469 /sec                      
+    10,584,419,338      cycles                           #    3.053 GHz                         (66.25%)
+                 0      stalled-cycles-frontend                                                 (67.17%)
+                 0      stalled-cycles-backend                                                  (67.09%)
+                 0      instructions                     #    0.00  insn per cycle              (66.68%)
+                 0      branches                         #    0.000 /sec                        (66.66%)
+                 0      branch-misses                                                           (66.15%)
+
+       8.167666595 seconds time elapsed
+
+       0.989090000 seconds user
+       2.468673000 seconds sys
+
+
+# started on Tue Jun 18 15:40:58 2024
+
+
+ Performance counter stats for 'tree /home/zcj':
+
+          3,432.62 msec task-clock                       #    0.404 CPUs utilized             
+               204      context-switches                 #   59.430 /sec                      
+                15      cpu-migrations                   #    4.370 /sec                      
+               761      page-faults                      #  221.697 /sec                      
+    10,482,002,066      cycles                           #    3.054 GHz                         (66.68%)
+                 0      stalled-cycles-frontend                                                 (67.23%)
+                 0      stalled-cycles-backend                                                  (67.02%)
+                 0      instructions                     #    0.00  insn per cycle              (66.53%)
+                 0      branches                         #    0.000 /sec                        (66.30%)
+                 0      branch-misses                                                           (66.24%)
+
+       8.496851482 seconds time elapsed
+
+       1.033921000 seconds user
+       2.386602000 seconds sys
+
+
+# started on Tue Jun 18 15:47:19 2024
+
+# started on Tue Jun 18 15:47:19 2024
+
+# started on Tue Jun 18 15:47:40 2024
+
+
+ Performance counter stats for 'tree /home/zcj':
+
+          3,614.03 msec task-clock                       #    0.399 CPUs utilized             
+               181      context-switches                 #   50.083 /sec                      
+                 3      cpu-migrations                   #    0.830 /sec                      
+               760      page-faults                      #  210.292 /sec                      
+    11,016,739,289      cycles                           #    3.048 GHz                         (26.33%)
+                 0      stalled-cycles-frontend                                                 (26.55%)
+                 0      stalled-cycles-backend                                                  (26.81%)
+                 0      instructions                     #    0.00  insn per cycle              (26.86%)
+                 0      branches                         #    0.000 /sec                        (27.27%)
+                 0      branch-misses                                                           (27.07%)
+                 0      L1-dcache-loads                  #    0.000 /sec                        (26.68%)
+                 0      L1-dcache-load-misses                                                   (26.80%)
+   <not supported>      LLC-loads                                                             
+   <not supported>      LLC-load-misses                                                       
+                 0      L1-icache-loads                  #    0.000 /sec                        (26.56%)
+                 0      L1-icache-load-misses                                                   (26.80%)
+                 0      dTLB-loads                       #    0.000 /sec                        (26.67%)
+                 0      dTLB-load-misses                                                        (26.51%)
+                 0      iTLB-loads                       #    0.000 /sec                        (26.44%)
+                 0      iTLB-load-misses                                                        (26.27%)
+                 0      L1-dcache-prefetches             #    0.000 /sec                        (26.39%)
+   <not supported>      L1-dcache-prefetch-misses                                             
+
+       9.057377059 seconds time elapsed
+
+       1.104801000 seconds user
+       2.499053000 seconds sys
+
+
