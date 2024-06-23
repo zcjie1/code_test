@@ -1,0 +1,32 @@
+DPDK is a set of libraries and drivers for fast packet processing.
+It supports many processor architectures and both FreeBSD and Linux.
+
+The DPDK uses the Open Source BSD-3-Clause license for the core libraries
+and drivers. The kernel components are GPL-2.0 licensed.
+
+Please check the doc directory for release notes,
+API documentation, and sample application information.
+
+For questions and usage discussions, subscribe to: users@dpdk.org
+Report bugs and issues to the development mailing list: dev@dpdk.org
+
+# 目录结构
+doc：DPDK 文档
+
+license：DPDK 许可证信息
+
+lib：DPDK库源码
+
+drivers：DPDK 轮询模式驱动程序的源代码
+
+app：DPDK应用源代码（自动测试）
+
+examples： DPDK应用示例源代码
+
+config, buildtools: 与框架相关的脚本和配置
+
+usertools：DPDK 应用程序最终用户的实用程序脚本
+
+devtools：供 DPDK 开发人员使用的脚本
+
+kernel：某些操作系统所需的内核模块
