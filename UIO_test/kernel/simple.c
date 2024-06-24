@@ -1,16 +1,16 @@
-/** https://blog.csdn.net/wenwuge_topsec/article/details/9628409
-*  This is a simple demon of uio driver.  
-*  Last modified by   
-        09-05-2011   Joseph Yang(Yang Honggang)<ganggexiongqi@gmail.com>  
-*  
-* Compile:    
-*   Save this file name it simple.c  
-*   # echo "obj-m := simple.o" > Makefile  
-*   # make -Wall -C /lib/modules/`uname -r`/build M=`pwd` modules  
-* Load the module:  
-*   #modprobe uio  
-*   #insmod simple.ko  
-*/  
+/** 参考 https://blog.csdn.net/wenwuge_topsec/article/details/9628409
+ * 
+ *  This is a simple demon of uio driver.  
+ *  Last modified by   2024.06.24   Zhou Congjie<zcjie0802@qq.com>  
+ *  
+ * Compile:    
+ *   Save this file name it simple.c  
+ *   # echo "obj-m := simple.o" > Makefile  
+ *   # make -Wall -C /lib/modules/`uname -r`/build M=`pwd` modules 
+ * Load the module:  
+ *   # modprobe uio  
+ *   # insmod simple.ko  
+ */  
   
 #include <linux/module.h>  
 #include <linux/platform_device.h>  
@@ -38,7 +38,8 @@ static int drv_kpart_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	printk("drv_kpart_probe( %p )\n", pdev);
+	printk("platform_device_pointer(%p)\n", pdev);
+    printk("base_device_pointer(%p)\n", &pdev->dev);
 
 	kpart_info.mem[0].internal_addr = kmalloc(MEM_SIZE, GFP_KERNEL); // mmap区域
 	if (!kpart_info.mem[0].internal_addr) {
@@ -74,18 +75,22 @@ static struct platform_driver uio_dummy_driver = {
     .probe = drv_kpart_probe,
     .remove = drv_kpart_remove,
     .driver = {
-        .name = "kpart",
+        .name = "kpart_driver",
         .owner = THIS_MODULE,
     },
 };
 
+static struct platform_device * uio_dummy_device;
+
 static int __init uio_kpart_init(void)  
-{       
+{
+    uio_dummy_device = platform_device_register_simple("kpart_driver", -1, NULL, 0);        
 	return platform_driver_register(&uio_dummy_driver);
 }  
   
 static void __exit uio_kpart_exit(void)  
-{  
+{
+    platform_device_unregister(uio_dummy_device);
     platform_driver_unregister(&uio_dummy_driver);
 }  
   
