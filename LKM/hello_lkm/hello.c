@@ -55,7 +55,15 @@ static int __init hello_init(void) {
         }
     }        
 
-    pr_info("matrix initialized!\n");
+    pr_info("matrix is initialized!\n");
+
+    // 输出矩阵
+    for(int i=0; i<row; i++){
+        pr_info("%5d %5d %5d %5d\n",
+                matrix[i][0], matrix[i][1], 
+                matrix[i][2], matrix[i][3]);
+    }
+
     return 0;
 }
 
