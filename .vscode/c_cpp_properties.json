@@ -12,7 +12,7 @@
             "cStandard": "gnu11",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-x64",
-            "compileCommands": "${workspaceFolder}/DPDK_test/dpdk/build/compile_commands.json"
+            "compileCommands": ""
         }
     ],
     "version": 4
