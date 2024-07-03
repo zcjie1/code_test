@@ -2,3 +2,4 @@ hello.mod*
 hello.o
 modules*
 Module*
+*.cmd
