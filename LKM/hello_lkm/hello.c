@@ -43,6 +43,9 @@ static int __init hello_init(void) {
     for(int i=0; i<row; i++){
         matrix[i] = (int *)kzalloc(size, GFP_KERNEL);
         if(!matrix[i]){
+            for(int j=0; j<i; j++)
+                kfree(matrix[j]);
+            kfree(matrix);
             pr_err("Out of Memorry!\n");
             return -ENOMEM;
         }
