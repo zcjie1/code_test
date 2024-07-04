@@ -11,16 +11,17 @@
  *   # modprobe uio  
  *   # insmod simple.ko  
  */  
-  
+
 #include <linux/module.h>  
 #include <linux/platform_device.h>  
 #include <linux/uio_driver.h>  
 #include <linux/slab.h> /* kmalloc, kfree */
+#include <linux/mod_devicetable.h>
 
-#define MEM_SIZE 1024
+#define MEM_SIZE 8192
 
 struct uio_info kpart_info = {
-	.name = "kpart",  
+	.name = "kpart_uio",  
 	.version = "0.1",  
 	.irq = UIO_IRQ_NONE, // 不产生中断
 	.mem[0] = {
@@ -70,6 +71,13 @@ static int drv_kpart_remove(struct platform_device *pdev)
     return 0; 
 }
 
+static struct platform_device_id platform_id_table[] = {
+    {
+        .name = "kpart_device",
+        .driver_data = 1234,
+    }
+};
+
 // platform设备在无实际硬件设备的条件下，可以 "自动探测", 调用probe函数
 static struct platform_driver uio_dummy_driver = {
     .probe = drv_kpart_probe,
@@ -78,15 +86,16 @@ static struct platform_driver uio_dummy_driver = {
         .name = "kpart_driver",
         .owner = THIS_MODULE,
     },
+    .id_table = platform_id_table
 };
 
 static struct platform_device * uio_dummy_device;
 
 static int __init uio_kpart_init(void)  
 {
-    uio_dummy_device = platform_device_register_simple("kpart_driver", -1, NULL, 0);        
+    uio_dummy_device = platform_device_register_simple("kpart_device", 1234, NULL, 0);     
 	return platform_driver_register(&uio_dummy_driver);
-}  
+}
   
 static void __exit uio_kpart_exit(void)  
 {
