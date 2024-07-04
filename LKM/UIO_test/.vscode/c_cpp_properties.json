@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/lib/modules/6.5.0-41-generic/build/include",
+                "/lib/modules/6.5.0-41-generic/build/include/uapi",
+                "/lib/modules/6.5.0-41-generic/build/arch/x86/include",
+                "/lib/modules/6.5.0-41-generic/build/arch/x86/include/generated",
+                "/lib/modules/6.5.0-41-generic/build/arch/x86/include/generated/uapi",
+                "/lib/modules/6.5.0-41-generic/build/arch/x86/include/uapi"
+            ],
+            "defines": [
+                "__GNUC__",
+                "__KERNEL__",
+                "MODULE"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "intelliSenseMode": "${default}",
+            "cStandard": "gnu11",
+            "compileCommands": "compile_commands.json",
+            "cppStandard": "gnu++11"
+        }
+    ],
+    "version": 4
+}
