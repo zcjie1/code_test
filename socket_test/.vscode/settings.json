@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "libc-header-start.h": "c",
+        "netdb.h": "c",
+        "socket.h": "c",
+        "string.h": "c",
+        "inet.h": "c"
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/clang"
+}
