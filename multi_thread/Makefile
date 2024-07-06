@@ -11,30 +11,32 @@ TARGET := main
 
 EXCUTE := ./main
 
-default: raw mutex spinlock asm
+.PHONY: clean title
 
-raw: $(SRC)
+default: title raw mutex spinlock asm
+
+title:
+	@printf "MODE	Final-shared_var	  Cost Time\n"
+
+raw: title $(SRC)
 	@$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
-	@printf "%-15s" "RAW MODE: "
+	@printf "%-8s" "RAW "
 	@$(EXCUTE)
 
-mutex: $(SRC)
+mutex: title $(SRC)
 	@$(CC) $(CFLAGS) -D MUTEX $(SRC) -o $(TARGET)
-	@printf "%-15s" "MUTEX MODE: "
+	@printf "%-8s" "MUTEX"
 	@$(EXCUTE)
 
-spinlock: $(SRC)
+spinlock: title $(SRC)
 	@$(CC) $(CFLAGS) -D SPINLOCK $(SRC) -o $(TARGET)
-	@printf "%-15s" "SPINLOCK MODE: "
+	@printf "%-8s" "SPIN"
 	@$(EXCUTE)
 
-asm: $(SRC)
+asm: title $(SRC)
 	@$(CC) $(CFLAGS) -D ASM $(SRC) -o $(TARGET)
-	@printf "%-15s" "ASM MODE: "
+	@printf "%-8s" "ASM"
 	@$(EXCUTE)
-
-
-.PHONY: clean
 
 clean:
 	@rm ./main

@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <time.h>
 
-#define ADD_COUNT 100000
+#define ADD_COUNT 10000000
 
 int shared_var = 0;
 
@@ -45,12 +46,15 @@ void* inc_func(void *arg) {
 
 int main() {
     pthread_t thread1, thread2;
+    struct timespec start, end;
 
 #ifdef MUTEX
     pthread_mutex_init(&lock, NULL);
 #elif defined SPINLOCK
     pthread_spin_init(&spinlock, PTHREAD_PROCESS_PRIVATE);
 #endif
+    // 记录程序开始时间
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     // 创建线程
     pthread_create(&thread1, NULL, inc_func, NULL);
@@ -60,7 +64,13 @@ int main() {
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
 
-    printf("Final value of shared_var is %d\n", shared_var);
+    // 记录程序结束时间
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    long long start_ns = start.tv_sec * 1000000000 + start.tv_nsec;
+    long long end_ns = end.tv_sec * 1000000000 + end.tv_nsec;
+    long long elapsed_time = end_ns - start_ns;
+
+    printf("   %d          %lldns\n", shared_var, elapsed_time);
 
 #ifdef MUTEX
     pthread_mutex_destroy(&lock);
