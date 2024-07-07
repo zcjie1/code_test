@@ -1,0 +1,5 @@
+*.mod*
+modules*
+Module*
+*.cmd
+compile_commands.json
