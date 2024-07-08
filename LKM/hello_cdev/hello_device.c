@@ -56,7 +56,7 @@ static int __init hello_device_init(void)
 
     // cdev初始化
     hello_cdev_ptr->owner = THIS_MODULE;
-    cdev_init(hello_cdev_ptr, &hello_device_ops);
+    hello_cdev_ptr->ops = &hello_device_ops;
 
     // 注册cdev类
     ret = cdev_add(hello_cdev_ptr, hello_device_num, 2);
