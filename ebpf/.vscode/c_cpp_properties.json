@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/src/linux-6.6.38/include/",
+                "/usr/src/linux-6.6.38/include/uapi",
+                "/usr/src/linux-6.6.38/arch/x86/include/",
+                "/usr/src/linux-6.6.38/arch/x86/include/generated",
+                "/usr/src/linux-6.6.38/arch/x86/include/generated/uapi",
+                "/usr/src/linux-6.6.38/arch/x86/include/uapi",
+                "/usr/src/linux-6.6.38/tools/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
