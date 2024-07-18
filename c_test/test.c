@@ -1,24 +1,46 @@
 #include <stdio.h>
-#include <stdbool.h>
-
-struct Settings {
-    _Bool offline_disabled : 1;
-    _Bool debug_mode: 1;
-    //unsigned long volume: 4;
-    //bool volume : 4; // 4 bits for volume level (0-15)
-};
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 int main() {
-    struct Settings s = { 
-        .offline_disabled = true, 
-        .debug_mode = false,
-        //.volume = 4
-    };
+    int fd;
+    char buffer[1024];
+    ssize_t bytesRead;
 
-    printf("size: %ld\n", sizeof(struct Settings));
-    printf("offline_disabled: %d\n", s.offline_disabled);
-    printf("debug_mode: %d\n", s.debug_mode);
-    //printf("volume: %d\n", s.volume);
-    
+    // Open /proc/mounts in read-only mode
+    if ((fd = open("/proc/mounts", O_RDONLY)) == -1) {
+        perror("Error opening file");
+        return 1;
+    }
+
+    // Seek to the fifth byte
+    if (lseek(fd, 4L, SEEK_SET) == -1) {
+        perror("Error seeking in file");
+        close(fd);
+        return 1;
+    }
+
+    sleep(5);
+
+    // Read from the file starting from the fifth byte
+    if ((bytesRead = read(fd, buffer, sizeof(buffer))) == -1) {
+        perror("Error reading from file");
+        close(fd);
+        return 1;
+    }
+
+    // Null terminate the string so we can print it
+    buffer[bytesRead] = '\0';
+
+    // Print the data
+    printf("Data starting from the fifth byte:\n%s\n", buffer);
+
+    // Close the file
+    if (close(fd) == -1) {
+        perror("Error closing file");
+        return 1;
+    }
+
     return 0;
 }
