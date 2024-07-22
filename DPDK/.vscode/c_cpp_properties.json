@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "intelliSenseMode": "${default}",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++17",
+            "compileCommands": "./dpdk/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}
