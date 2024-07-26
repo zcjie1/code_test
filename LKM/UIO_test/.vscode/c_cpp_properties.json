@@ -4,12 +4,12 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/lib/modules/6.5.0-41-generic/build/include",
-                "/lib/modules/6.5.0-41-generic/build/include/uapi",
-                "/lib/modules/6.5.0-41-generic/build/arch/x86/include",
-                "/lib/modules/6.5.0-41-generic/build/arch/x86/include/generated",
-                "/lib/modules/6.5.0-41-generic/build/arch/x86/include/generated/uapi",
-                "/lib/modules/6.5.0-41-generic/build/arch/x86/include/uapi"
+                "/lib/modules/6.5.0-44-generic/build/include",
+                "/lib/modules/6.5.0-44-generic/build/include/uapi",
+                "/lib/modules/6.5.0-44-generic/build/arch/x86/include",
+                "/lib/modules/6.5.0-44-generic/build/arch/x86/include/generated",
+                "/lib/modules/6.5.0-44-generic/build/arch/x86/include/generated/uapi",
+                "/lib/modules/6.5.0-44-generic/build/arch/x86/include/uapi"
             ],
             "defines": [
                 "__GNUC__",
