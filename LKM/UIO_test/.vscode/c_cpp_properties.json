@@ -19,7 +19,6 @@
             "compilerPath": "/usr/bin/gcc",
             "intelliSenseMode": "${default}",
             "cStandard": "gnu11",
-            "compileCommands": "compile_commands.json",
             "cppStandard": "gnu++11"
         }
     ],
