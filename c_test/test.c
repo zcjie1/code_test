@@ -1,45 +1,60 @@
 #include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include <stdlib.h>
+#include <getopt.h>
 
-int main() {
-    int fd;
-    char buffer[1024];
-    ssize_t bytesRead;
+#define MAX_LINE 1024
 
-    // Open /proc/mounts in read-only mode
-    if ((fd = open("/proc/mounts", O_RDONLY)) == -1) {
-        perror("Error opening file");
-        return 1;
+int main(int argc, char *argv[]) {
+    int opt;
+    char *filename = NULL;
+    int verbose = 0;
+    int number = 0;
+
+    static struct option long_options[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"verbose", no_argument, NULL, 'v'},
+        {"file", required_argument, NULL, 'f'},
+        {"number", required_argument, NULL, 'n'},
+        {NULL, 0, NULL, 0}
+    };
+
+    while ((opt = getopt_long(argc, argv, "hvfn:", long_options, NULL)) != -1) {
+        switch (opt) {
+            case 'h':
+                printf("Usage: %s [-h] [-v] [-f FILE] [-n NUMBER]\n", argv[0]);
+                printf("Options:\n");
+                printf("  -h, --help       Show this help message and exit.\n");
+                printf("  -v, --verbose    Enable verbose output.\n");
+                printf("  -f, --file=FILE  File to process.\n");
+                printf("  -n, --number=NUM Number to use.\n");
+                return 0;
+            case 'v':
+                verbose = 1;
+                break;
+            case 'f':
+                filename = optarg;
+                break;
+            case 'n':
+                number = atoi(optarg);
+                break;
+            default:
+                fprintf(stderr, "Unknown option: %c\n", opt);
+                return 1;
+        }
     }
 
-    // Seek to the fifth byte
-    if (lseek(fd, 4L, SEEK_SET) == -1) {
-        perror("Error seeking in file");
-        close(fd);
-        return 1;
+    // 处理剩余的参数
+    for (int i = optind; i < argc; i++) {
+        printf("Non-option argument: %s\n", argv[i]);
     }
 
-    sleep(5);
-
-    // Read from the file starting from the fifth byte
-    if ((bytesRead = read(fd, buffer, sizeof(buffer))) == -1) {
-        perror("Error reading from file");
-        close(fd);
-        return 1;
+    // 打印解析结果
+    printf("Verbose mode: %s\n", verbose ? "Enabled" : "Disabled");
+    if (filename) {
+        printf("File: %s\n", filename);
     }
-
-    // Null terminate the string so we can print it
-    buffer[bytesRead] = '\0';
-
-    // Print the data
-    printf("Data starting from the fifth byte:\n%s\n", buffer);
-
-    // Close the file
-    if (close(fd) == -1) {
-        perror("Error closing file");
-        return 1;
+    if (number) {
+        printf("Number: %d\n", number);
     }
 
     return 0;
