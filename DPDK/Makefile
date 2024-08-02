@@ -33,6 +33,12 @@ vfio_bind_eth2:
 	@sudo ./dpdk/usertools/dpdk-devbind.py -u 0000:13:00.0
 	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vfio-pci 13:00.0
 
+# eth3网卡绑定vfio-pci
+vfio_bind_eth3:
+	@sudo ip link set eth3 down
+	@sudo ./dpdk/usertools/dpdk-devbind.py -u 0000:1b:00.0
+	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vfio-pci 1b:00.0
+
 # eth0网卡解除vfio绑定
 unbind_eth0:
 	@sudo ./dpdk/usertools/dpdk-devbind.py --unbind 0000:03:00.0
@@ -47,6 +53,11 @@ unbind_eth1:
 unbind_eth2:
 	@sudo ./dpdk/usertools/dpdk-devbind.py --unbind 0000:13:00.0
 	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vmxnet3 13:00.0
+
+# eth3网卡解除vfio绑定
+unbind_eth3:
+	@sudo ./dpdk/usertools/dpdk-devbind.py --unbind 0000:1b:00.0
+	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vmxnet3 1b:00.0
 
 clean:
 	@sudo modprobe -r vfio-pci
