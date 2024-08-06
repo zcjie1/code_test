@@ -11,30 +11,30 @@ status:
 	@sudo ./dpdk/usertools/dpdk-devbind.py --status
 
 # 加载vfio-pci相关模块
-vfio_env:
+env:
 	@sudo modprobe vfio enable_unsafe_noiommu_mode=1
 	@sudo modprobe vfio-pci
 	
 # eth0网卡绑定vfio-pci
-vfio_bind_eth0:
+bind_eth0:
 	@sudo ip link set eth0 down
 	@sudo ./dpdk/usertools/dpdk-devbind.py -u 0000:13:00.0
 	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vfio-pci 13:00.0
 
 # eth1网卡绑定vfio-pci
-vfio_bind_eth1:
+bind_eth1:
 	@sudo ip link set eth1 down
 	@sudo ./dpdk/usertools/dpdk-devbind.py -u 0000:1b:00.0
 	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vfio-pci 1b:00.0
 
 # eth2网卡绑定vfio-pci
-vfio_bind_eth2:
+bind_eth2:
 	@sudo ip link set eth2 down
 	@sudo ./dpdk/usertools/dpdk-devbind.py -u 0000:02:01.0
 	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vfio-pci 02:01.0
 
 # eth3网卡绑定vfio-pci
-vfio_bind_eth3:
+bind_eth3:
 	@sudo ip link set eth3 down
 	@sudo ./dpdk/usertools/dpdk-devbind.py -u 0000:02:05.0
 	@sudo ./dpdk/usertools/dpdk-devbind.py --bind=vfio-pci 02:05.0
