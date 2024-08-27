@@ -1,0 +1,14 @@
+
+==================Packets statistics=======================
+Packets sent:                        0
+Packets received:                    5
+Packets dropped:                     0
+===================2024-08-27 19:11:47=====================
+
+
+==================Packets statistics=======================
+Packets sent:                       48
+Packets received:                  233
+Packets dropped:                     0
+===================2024-08-27 19:11:57=====================
+
