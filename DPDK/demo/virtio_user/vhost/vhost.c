@@ -321,7 +321,7 @@ int main(int argc, char *argv[]) {
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
 	rte_eal_remote_launch(send_pkt, &send_port, worker_id);
 
-	FILE *logfile = fopen("packet.log", "w");
+	FILE *logfile = fopen("./vhost/packet.log", "w");
 	rte_eal_alarm_callback cb = show_stats;
 	rte_eal_alarm_set(PERIOD * MS_PER_S, cb, logfile);
 

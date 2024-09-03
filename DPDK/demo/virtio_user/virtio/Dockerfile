@@ -1,14 +1,15 @@
-# DPDK docker image 
+# DPDK docker image
+# docker build -f ./virtio/Dockerfile -t dpdk-virtio ~/code_test/DPDK/
 
-FROM ubuntu:latest
+FROM dpdk-base:latest
 
-# copy DPDK source code
-COPY ./build/virtio-static /usr/local/bin
+COPY ./virtio.c /usr/src/virtio/
+COPY ./Makefile /usr/src/virtio/
 
-# install DPDK
-WORKDIR /usr/local/bin
-    
-# dpdk-testpmd path
+WORKDIR /usr/src/virtio
+RUN make static && \
+    cp ./build/virtio-static /usr/local/bin/
+
 ENV PATH="$PATH:/usr/local/bin"
 
 # default command
