@@ -1,0 +1,248 @@
+sudo ./host_app/dpdk-testpmd \
+        -l 0-1 \
+        --socket-mem 1024 \
+        --vdev=eth_vhost0,iface=/tmp/sock0 \
+        --vdev=eth_vhost1,iface=/tmp/sock1 \
+        --file-prefix=host \
+        --log-level pmd.net.vhost:debug \
+        --log-level lib.vhost.config:debug \
+        --log-level lib.vhost.data:debug \
+        -- \
+        --portmask=0x3 \
+        --no-numa \
+        -i
+EAL: Detected CPU lcores: 8
+EAL: Detected NUMA nodes: 1
+EAL: Detected static linkage of DPDK
+EAL: Multi-process socket /var/run/dpdk/host/mp_socket
+EAL: Selected IOVA mode 'PA'
+EAL: VFIO support initialized
+EAL: Using IOMMU type 8 (No-IOMMU)
+EAL: Ignore mapping IO port bar(4)
+EAL: Probe PCI driver: net_e1000_em (8086:100f) device: 0000:02:01.0 (socket -1)
+EAL: Ignore mapping IO port bar(4)
+EAL: Probe PCI driver: net_e1000_em (8086:100f) device: 0000:02:05.0 (socket -1)
+Initializing pmd_vhost for eth_vhost0
+Creating VHOST-USER backend on numa socket 0
+Initializing pmd_vhost for eth_vhost1
+Creating VHOST-USER backend on numa socket 0
+previous number of forwarding ports 4 - changed to number of configured ports 2
+Interactive-mode selected
+testpmd: create a new mbuf pool <mb_pool_0>: n=155456, size=2176, socket=0
+testpmd: preferred mempool ops selected: ring_mp_mc
+Configuring Port 0 (socket 0)
+EAL: Error enabling MSI-X interrupts for fd 25
+Port 0: 00:0C:29:6F:9E:E0
+Configuring Port 1 (socket 0)
+EAL: Error enabling MSI-X interrupts for fd 29
+Port 1: 00:0C:29:6F:9E:EA
+Configuring Port 2 (socket 0)
+VHOST_CONFIG: (/tmp/sock0) vhost-user server: socket created, fd: 35
+VHOST_CONFIG: (/tmp/sock0) Setting max queue pairs to 1
+VHOST_CONFIG: (/tmp/sock0) binding succeeded
+Port 2: 56:48:4F:53:54:02
+Configuring Port 3 (socket 0)
+VHOST_CONFIG: (/tmp/sock1) vhost-user server: socket created, fd: 38
+VHOST_CONFIG: (/tmp/sock1) Setting max queue pairs to 1
+VHOST_CONFIG: (/tmp/sock1) binding succeeded
+Port 3: 56:48:4F:53:54:03
+Checking link statuses...
+Done
+testpmd> VHOST_CONFIG: (/tmp/sock0) new vhost user connection is 39
+VHOST_CONFIG: (/tmp/sock0) new device, handle is 0
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_OWNER
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_OWNER succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_GET_FEATURES succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_GET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_GET_PROTOCOL_FEATURES succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/tmp/sock0) negotiated Vhost-user protocol features: 0x10009
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_PROTOCOL_FEATURES succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/tmp/sock0) vring call idx:0 file:40
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_CALL succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/tmp/sock0) vring call idx:1 file:41
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_CALL succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/tmp/sock0) negotiated Virtio features: 0x950008000
+VHOST_CONFIG: (/tmp/sock0) mergeable RX buffers on, virtio 1 on
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_FEATURES succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/tmp/sock0) new device status(0x0000000b):
+VHOST_CONFIG: (/tmp/sock0)      -RESET: 0
+VHOST_CONFIG: (/tmp/sock0)      -ACKNOWLEDGE: 1
+VHOST_CONFIG: (/tmp/sock0)      -DRIVER: 1
+VHOST_CONFIG: (/tmp/sock0)      -FEATURES_OK: 1
+VHOST_CONFIG: (/tmp/sock0)      -DRIVER_OK: 0
+VHOST_CONFIG: (/tmp/sock0)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/tmp/sock0)      -FAILED: 0
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_STATUS succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_GET_STATUS succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_GET_STATUS succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_MEM_TABLE
+VHOST_CONFIG: (/tmp/sock0) guest memory region size: 0x40000000
+VHOST_CONFIG: (/tmp/sock0)       guest physical addr: 0x140000000
+VHOST_CONFIG: (/tmp/sock0)       guest virtual  addr: 0x140000000
+VHOST_CONFIG: (/tmp/sock0)       host  virtual  addr: 0x797dc0000000
+VHOST_CONFIG: (/tmp/sock0)       mmap addr : 0x797dc0000000
+VHOST_CONFIG: (/tmp/sock0)       mmap size : 0x40000000
+VHOST_CONFIG: (/tmp/sock0)       mmap align: 0x40000000
+VHOST_CONFIG: (/tmp/sock0)       mmap off  : 0x0
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_MEM_TABLE succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_NUM
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_NUM succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_BASE
+VHOST_CONFIG: (/tmp/sock0) vring base idx:0 last_used_idx:0 last_avail_idx:0.
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_BASE succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_ADDR
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_ADDR succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_KICK
+VHOST_CONFIG: (/tmp/sock0) vring kick idx:0 file:43
+VHOST_CONFIG: (/tmp/sock0) mapped address desc: 0x797dfff80000
+VHOST_CONFIG: (/tmp/sock0) mapped address avail: 0x797dfff81000
+VHOST_CONFIG: (/tmp/sock0) mapped address used: 0x797dfff82000
+VHOST_CONFIG: (/tmp/sock0) log_guest_addr: 0
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_KICK succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_NUM
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_NUM succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_BASE
+VHOST_CONFIG: (/tmp/sock0) vring base idx:1 last_used_idx:0 last_avail_idx:0.
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_BASE succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_ADDR
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_ADDR succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_KICK
+VHOST_CONFIG: (/tmp/sock0) vring kick idx:1 file:44
+VHOST_CONFIG: (/tmp/sock0) mapped address desc: 0x797dfff7b000
+VHOST_CONFIG: (/tmp/sock0) mapped address avail: 0x797dfff7c000
+VHOST_CONFIG: (/tmp/sock0) mapped address used: 0x797dfff7d000
+VHOST_CONFIG: (/tmp/sock0) log_guest_addr: 0
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_KICK succeeded.
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/tmp/sock0) set queue enable: 1 to qp idx: 0
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_ENABLE succeeded.
+vring0 is enabled
+
+Port 2: queue state event
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/tmp/sock0) set queue enable: 1 to qp idx: 1
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_VRING_ENABLE succeeded.
+vring1 is enabled
+
+Port 2: queue state event
+VHOST_CONFIG: (/tmp/sock0) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/tmp/sock0) new device status(0x0000000f):
+VHOST_CONFIG: (/tmp/sock0)      -RESET: 0
+VHOST_CONFIG: (/tmp/sock0)      -ACKNOWLEDGE: 1
+VHOST_CONFIG: (/tmp/sock0)      -DRIVER: 1
+VHOST_CONFIG: (/tmp/sock0)      -FEATURES_OK: 1
+VHOST_CONFIG: (/tmp/sock0)      -DRIVER_OK: 1
+VHOST_CONFIG: (/tmp/sock0)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/tmp/sock0)      -FAILED: 0
+VHOST_CONFIG: (/tmp/sock0) processing VHOST_USER_SET_STATUS succeeded.
+VHOST_CONFIG: (/tmp/sock0) virtio is now ready for processing.
+Vhost device 0 created
+
+Port 2: link state change event
+VHOST_CONFIG: (/tmp/sock1) new vhost user connection is 45
+VHOST_CONFIG: (/tmp/sock1) new device, handle is 1
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_OWNER
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_OWNER succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_GET_FEATURES succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_GET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_GET_PROTOCOL_FEATURES succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/tmp/sock1) negotiated Vhost-user protocol features: 0x10009
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_PROTOCOL_FEATURES succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/tmp/sock1) vring call idx:0 file:46
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_CALL succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/tmp/sock1) vring call idx:1 file:47
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_CALL succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/tmp/sock1) negotiated Virtio features: 0x950008000
+VHOST_CONFIG: (/tmp/sock1) mergeable RX buffers on, virtio 1 on
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_FEATURES succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/tmp/sock1) new device status(0x0000000b):
+VHOST_CONFIG: (/tmp/sock1)      -RESET: 0
+VHOST_CONFIG: (/tmp/sock1)      -ACKNOWLEDGE: 1
+VHOST_CONFIG: (/tmp/sock1)      -DRIVER: 1
+VHOST_CONFIG: (/tmp/sock1)      -FEATURES_OK: 1
+VHOST_CONFIG: (/tmp/sock1)      -DRIVER_OK: 0
+VHOST_CONFIG: (/tmp/sock1)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/tmp/sock1)      -FAILED: 0
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_STATUS succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_GET_STATUS succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_GET_STATUS succeeded and needs reply.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_MEM_TABLE
+VHOST_CONFIG: (/tmp/sock1) guest memory region size: 0x40000000
+VHOST_CONFIG: (/tmp/sock1)       guest physical addr: 0x140000000
+VHOST_CONFIG: (/tmp/sock1)       guest virtual  addr: 0x140000000
+VHOST_CONFIG: (/tmp/sock1)       host  virtual  addr: 0x797d80000000
+VHOST_CONFIG: (/tmp/sock1)       mmap addr : 0x797d80000000
+VHOST_CONFIG: (/tmp/sock1)       mmap size : 0x40000000
+VHOST_CONFIG: (/tmp/sock1)       mmap align: 0x40000000
+VHOST_CONFIG: (/tmp/sock1)       mmap off  : 0x0
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_MEM_TABLE succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_NUM
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_NUM succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_BASE
+VHOST_CONFIG: (/tmp/sock1) vring base idx:0 last_used_idx:0 last_avail_idx:0.
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_BASE succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_ADDR
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_ADDR succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_KICK
+VHOST_CONFIG: (/tmp/sock1) vring kick idx:0 file:49
+VHOST_CONFIG: (/tmp/sock1) mapped address desc: 0x797dbff6c000
+VHOST_CONFIG: (/tmp/sock1) mapped address avail: 0x797dbff6d000
+VHOST_CONFIG: (/tmp/sock1) mapped address used: 0x797dbff6e000
+VHOST_CONFIG: (/tmp/sock1) log_guest_addr: 0
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_KICK succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_NUM
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_NUM succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_BASE
+VHOST_CONFIG: (/tmp/sock1) vring base idx:1 last_used_idx:0 last_avail_idx:0.
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_BASE succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_ADDR
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_ADDR succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_KICK
+VHOST_CONFIG: (/tmp/sock1) vring kick idx:1 file:50
+VHOST_CONFIG: (/tmp/sock1) mapped address desc: 0x797dbff67000
+VHOST_CONFIG: (/tmp/sock1) mapped address avail: 0x797dbff68000
+VHOST_CONFIG: (/tmp/sock1) mapped address used: 0x797dbff69000
+VHOST_CONFIG: (/tmp/sock1) log_guest_addr: 0
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_KICK succeeded.
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/tmp/sock1) set queue enable: 1 to qp idx: 0
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_ENABLE succeeded.
+vring0 is enabled
+
+Port 3: queue state event
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/tmp/sock1) set queue enable: 1 to qp idx: 1
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_VRING_ENABLE succeeded.
+vring1 is enabled
+
+Port 3: queue state event
+VHOST_CONFIG: (/tmp/sock1) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/tmp/sock1) new device status(0x0000000f):
+VHOST_CONFIG: (/tmp/sock1)      -RESET: 0
+VHOST_CONFIG: (/tmp/sock1)      -ACKNOWLEDGE: 1
+VHOST_CONFIG: (/tmp/sock1)      -DRIVER: 1
+VHOST_CONFIG: (/tmp/sock1)      -FEATURES_OK: 1
+VHOST_CONFIG: (/tmp/sock1)      -DRIVER_OK: 1
+VHOST_CONFIG: (/tmp/sock1)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/tmp/sock1)      -FAILED: 0
+VHOST_CONFIG: (/tmp/sock1) processing VHOST_USER_SET_STATUS succeeded.
+VHOST_CONFIG: (/tmp/sock1) virtio is now ready for processing.
+Vhost device 1 created
+
+Port 3: link state change event

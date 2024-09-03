@@ -9,6 +9,9 @@ host_app:
 		--vdev=eth_vhost0,iface=/tmp/sock0 \
 		--vdev=eth_vhost1,iface=/tmp/sock1 \
 		--file-prefix=host \
+		--log-level pmd.net.vhost:debug \
+		--log-level lib.vhost.config:debug \
+		--log-level lib.vhost.data:debug \
 		-- \
 		--portmask=0x3 \
 		--no-numa \
@@ -28,6 +31,9 @@ docker_app:
 			--vdev=virtio_user0,path=/var/run/usvhost0 \
 			--vdev=virtio_user1,path=/var/run/usvhost1 \
 			--file-prefix=container \
+			--log-level pmd.net.virtio.init:debug \
+			--log-level pmd.net.virtio.driver:debug \
+			--no-pci \
 			-- \
 			--portmask=0x3 \
 			--no-numa \

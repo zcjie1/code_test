@@ -1,0 +1,144 @@
+docker run \
+        -it --rm \
+        --privileged \
+        -v /tmp/sock0:/var/run/usvhost0 \
+        -v /tmp/sock1:/var/run/usvhost1 \
+        -v /dev/hugepages:/dev/hugepages \
+        dpdk-dev dpdk-testpmd \
+                -l 6-7 -m 1024  \
+                --vdev=virtio_user0,path=/var/run/usvhost0 \
+                --vdev=virtio_user1,path=/var/run/usvhost1 \
+                --file-prefix=container \
+                --log-level pmd.net.virtio.init:debug \
+                --log-level pmd.net.virtio.driver:debug \
+                --no-pci \
+                -- \
+                --portmask=0x3 \
+                --no-numa \
+                -i
+EAL: Detected CPU lcores: 8
+EAL: Detected NUMA nodes: 1
+EAL: Detected static linkage of DPDK
+EAL: Multi-process socket /var/run/dpdk/container/mp_socket
+EAL: Selected IOVA mode 'VA'
+EAL: 256 hugepages of size 2097152 reserved, but no mounted hugetlbfs found for that size
+EAL: VFIO support initialized
+virtio_user_pmd_probe(): Backend type detected: VHOST_USER
+virtio_user_dev_init_mac(): (/var/run/usvhost0) No valid MAC in devargs or device, use random
+virtio_ethdev_negotiate_features(): guest_features before negotiate = 8000005f10ef8028
+virtio_ethdev_negotiate_features(): host_features before negotiate = 910018183
+virtio_ethdev_negotiate_features(): features after negotiate = 910018000
+virtio_user_dev_set_features(): (/var/run/usvhost0) set features: 0x910008000
+virtio_user_dev_update_status(): Updated Device Status(0x0000000b):
+        -RESET: 0
+        -ACKNOWLEDGE: 1
+        -DRIVER: 1
+        -DRIVER_OK: 0
+        -FEATURES_OK: 1
+        -DEVICE_NEED_RESET: 0
+        -FAILED: 0
+virtio_init_device(): PORT MAC: 06:BA:3D:71:45:93
+virtio_init_device(): link speed = -1, duplex = 1
+virtio_init_device(): config->max_virtqueue_pairs=1
+virtio_init_queue(): setting up queue: 0 on NUMA node -1
+virtio_init_queue(): vq_size: 256
+virtqueue_alloc(): vring_size: 10244, rounded_vring_size: 12288
+virtqueue_alloc(): vq->vq_ring_mem: 0x17ff80000
+virtqueue_alloc(): vq->vq_ring_virt_mem: 0x17ff80000
+virtio_init_vring():  >>
+virtio_init_queue(): setting up queue: 1 on NUMA node -1
+virtio_init_queue(): vq_size: 256
+virtqueue_alloc(): vring_size: 10244, rounded_vring_size: 12288
+virtqueue_alloc(): vq->vq_ring_mem: 0x17ff7b000
+virtqueue_alloc(): vq->vq_ring_virt_mem: 0x17ff7b000
+virtio_init_vring():  >>
+virtio_user_dev_update_status(): Updated Device Status(0x0000000b):
+        -RESET: 0
+        -ACKNOWLEDGE: 1
+        -DRIVER: 1
+        -DRIVER_OK: 0
+        -FEATURES_OK: 1
+        -DEVICE_NEED_RESET: 0
+        -FAILED: 0
+update_memory_region(): index=0 fd=14 offset=0x0 addr=0x140000000 len=1073741824
+virtio_user_pmd_probe(): Backend type detected: VHOST_USER
+virtio_user_dev_init_mac(): (/var/run/usvhost1) No valid MAC in devargs or device, use random
+virtio_ethdev_negotiate_features(): guest_features before negotiate = 8000005f10ef8028
+virtio_ethdev_negotiate_features(): host_features before negotiate = 910018183
+virtio_ethdev_negotiate_features(): features after negotiate = 910018000
+virtio_user_dev_set_features(): (/var/run/usvhost1) set features: 0x910008000
+virtio_user_dev_update_status(): Updated Device Status(0x0000000b):
+        -RESET: 0
+        -ACKNOWLEDGE: 1
+        -DRIVER: 1
+        -DRIVER_OK: 0
+        -FEATURES_OK: 1
+        -DEVICE_NEED_RESET: 0
+        -FAILED: 0
+virtio_init_device(): PORT MAC: C6:4B:06:F9:CD:21
+virtio_init_device(): link speed = -1, duplex = 1
+virtio_init_device(): config->max_virtqueue_pairs=1
+virtio_init_queue(): setting up queue: 0 on NUMA node -1
+virtio_init_queue(): vq_size: 256
+virtqueue_alloc(): vring_size: 10244, rounded_vring_size: 12288
+virtqueue_alloc(): vq->vq_ring_mem: 0x17ff6c000
+virtqueue_alloc(): vq->vq_ring_virt_mem: 0x17ff6c000
+virtio_init_vring():  >>
+virtio_init_queue(): setting up queue: 1 on NUMA node -1
+virtio_init_queue(): vq_size: 256
+virtqueue_alloc(): vring_size: 10244, rounded_vring_size: 12288
+virtqueue_alloc(): vq->vq_ring_mem: 0x17ff67000
+virtqueue_alloc(): vq->vq_ring_virt_mem: 0x17ff67000
+virtio_init_vring():  >>
+virtio_user_dev_update_status(): Updated Device Status(0x0000000b):
+        -RESET: 0
+        -ACKNOWLEDGE: 1
+        -DRIVER: 1
+        -DRIVER_OK: 0
+        -FEATURES_OK: 1
+        -DEVICE_NEED_RESET: 0
+        -FAILED: 0
+update_memory_region(): index=0 fd=14 offset=0x0 addr=0x140000000 len=1073741824
+TELEMETRY: No legacy callbacks, legacy socket not created
+Interactive-mode selected
+testpmd: create a new mbuf pool <mb_pool_0>: n=155456, size=2176, socket=0
+testpmd: preferred mempool ops selected: ring_mp_mc
+Configuring Port 0 (socket 0)
+virtio_dev_configure(): configure
+virtio_dev_tx_queue_setup():  >>
+virtio_dev_rx_queue_setup():  >>
+virtio_dev_rx_queue_setup_finish():  >>
+virtio_dev_rx_queue_setup_finish(): Allocated 256 bufs (port=0 queue=0)
+virtio_dev_tx_queue_setup_finish():  >>
+virtio_dev_start(): nb_queues=1 (port=0)
+virtio_dev_start(): Notified backend at initialization (port=0)
+set_rxtx_funcs(): virtio: using inorder Tx path on port 0
+set_rxtx_funcs(): virtio: using inorder Rx path on port 0
+virtio_dev_link_update(): Get link status from hw
+virtio_dev_link_update(): Port 0 is up
+virtio_dev_promiscuous_disable(): host does not support rx control
+virtio_dev_allmulticast_disable(): host does not support rx control
+Port 0: 06:BA:3D:71:45:93
+Configuring Port 1 (socket 0)
+virtio_dev_configure(): configure
+virtio_dev_tx_queue_setup():  >>
+virtio_dev_rx_queue_setup():  >>
+virtio_dev_rx_queue_setup_finish():  >>
+virtio_dev_rx_queue_setup_finish(): Allocated 256 bufs (port=1 queue=0)
+virtio_dev_tx_queue_setup_finish():  >>
+virtio_dev_start(): nb_queues=1 (port=1)
+virtio_dev_start(): Notified backend at initialization (port=1)
+set_rxtx_funcs(): virtio: using inorder Tx path on port 1
+set_rxtx_funcs(): virtio: using inorder Rx path on port 1
+virtio_dev_link_update(): Get link status from hw
+virtio_dev_link_update(): Port 1 is up
+virtio_dev_promiscuous_disable(): host does not support rx control
+virtio_dev_allmulticast_disable(): host does not support rx control
+Port 1: C6:4B:06:F9:CD:21
+Checking link statuses...
+Done
+virtio_dev_promiscuous_enable(): host does not support rx control
+Error during enabling promiscuous mode for port 0: Operation not supported - ignore
+virtio_dev_promiscuous_enable(): host does not support rx control
+Error during enabling promiscuous mode for port 1: Operation not supported - ignore
+testpmd>
