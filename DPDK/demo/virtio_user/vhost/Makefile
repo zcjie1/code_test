@@ -5,7 +5,7 @@
 APP = vhost
 
 # all source are stored in SRCS-y
-SRCS-y := vhost.c
+SRCS-y := vhost.c init.c log.c
 
 PKGCONF ?= pkg-config
 

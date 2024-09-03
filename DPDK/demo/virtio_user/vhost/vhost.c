@@ -1,17 +1,10 @@
-/**
- * vhost驱动程序测试
- * 1. 获取运行参数中的-vdev参数，并加载对应驱动
- * 2. 加载一张物理网卡，一张vhost网卡
- * 3. 通过物理网卡接收字符串数据，并通过vhost网卡转发
- * 4. virtio端接收vhost网卡转发字符串，并输出至文件(挂载到容器中)
- * 
- * 运行命令: sudo ./build/vhost -l 0-1 --vdev 'eth_vhost0,iface=/tmp/sock0'
- */
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
+#include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 
 #include <rte_eal.h>
@@ -25,32 +18,7 @@
 #include <rte_alarm.h>
 #include <rte_vhost.h>
 
-#define NUM_MBUFS 4096
-#define MBUF_CACHE_SIZE 512
-#define BURST_SIZE 32
-
-#define RX_RING_NUM 1
-#define TX_RING_NUM 1
-#define RX_RING_SIZE 2048
-#define TX_RING_SIZE 2048
-
-#define PERIOD 10
-
-bool force_quit = false;
-
-struct status {
-	uint64_t total_rx;
-	uint64_t total_tx;
-	uint64_t real_rx;
-	uint64_t real_tx;
-}statistics;
-
-static struct rte_ring *fwd_ring;
-
-typedef enum PORT_TYPE {
-    RECV_PORT = 0,
-    SEND_PORT,
-}PORT_TYPE;
+#include "vhost.h"
 
 // 接收数据包，放入fwd_ring
 static int recv_pkt(void *arg)
@@ -92,7 +60,6 @@ static int send_pkt(void *arg)
 	rte_eth_macaddr_get(port, &src_mac);
 
 	while(!force_quit) {
-		burst = 0;
 		retval = rte_ring_dequeue(fwd_ring, (void **)&tmp);
 		while(burst < BURST_SIZE && retval == 0) {
 			bufs[burst++] = tmp;
@@ -103,124 +70,13 @@ static int send_pkt(void *arg)
 
 		nb_tx = rte_eth_tx_burst(port, 0, bufs, burst);
 		statistics.real_tx += nb_tx;
-		if (unlikely(nb_tx < burst)) {
-			for (uint16_t i = nb_tx; i < burst; i++)
-				rte_pktmbuf_free(bufs[i]);
-		}
+		burst -= nb_tx;
 	}
 
 	while(rte_ring_dequeue(fwd_ring, (void **)&tmp) == 0)
 		rte_pktmbuf_free(tmp);
 
 	return 0;
-}
-
-// 共享队列初始化
-static void ring_init()
-{
-	fwd_ring = rte_ring_create("rx_ring", RX_RING_SIZE, 
-					rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
-}
-
-// 网卡初始化
-static inline int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
-{
-	struct rte_eth_conf port_conf;
-	struct rte_eth_dev_info dev_info;
-	uint16_t nb_rxd = RX_RING_SIZE;
-	uint16_t nb_txd = TX_RING_SIZE;
-	int retval;
-    PORT_TYPE type = RECV_PORT;
-
-	struct rte_eth_rxconf rxconf;
-	struct rte_eth_txconf txconf;
-	
-	printf("Initializing port %u... \n", port);
-	fflush(stdout);
-
-	if (!rte_eth_dev_is_valid_port(port))
-		return -1;
-
-	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
-
-	// 获取网卡信息
-	retval = rte_eth_dev_info_get(port, &dev_info);
-	if (retval < 0) {
-		printf("Error during getting device (port %u) info: %s\n",
-				port, strerror(-retval));
-		return retval;
-	}
-
-	// 配置port_conf
-	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
-		port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
-
-	// 设置网卡对应的ring数量
-	retval = rte_eth_dev_configure(port, RX_RING_NUM, TX_RING_NUM, &port_conf);
-	if (retval < 0)
-		return retval;
-
-	// 设置每个ring的描述符数量
-	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
-	if (retval < 0)
-		return retval;
-
-	// 设置每个receive ring对应的内存池
-	int port_socket = rte_eth_dev_socket_id(port);
-	rxconf = dev_info.default_rxconf;
-	rxconf.offloads = port_conf.rxmode.offloads;
-	for (int r = 0; r < RX_RING_NUM; r++) {
-		retval = rte_eth_rx_queue_setup(port, r, nb_rxd,
-				port_socket, &rxconf, mbuf_pool);
-		if (retval < 0)
-			return retval;
-	}
-
-	// 配置发送队列
-	txconf = dev_info.default_txconf;
-	txconf.offloads = port_conf.txmode.offloads;
-	for (int r = 0; r < TX_RING_NUM; r++) {
-		retval = rte_eth_tx_queue_setup(port, r, nb_txd,
-				port_socket, &txconf);
-		if (retval < 0)
-			return retval;
-	}
-
-	retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
-	if (retval < 0)
-		printf("Port %u, Failed to disable Ptype parsing\n", port);
-
-	// 启动网卡
-	retval = rte_eth_dev_start(port);
-	if (retval < 0)
-		return retval;
-
-	// 输出网卡信息
-	struct rte_ether_addr addr;
-    char *name = (char *)malloc(sizeof(char) * 512);
-	retval = rte_eth_macaddr_get(port, &addr);
-	if (retval < 0)
-		return retval;
-
-	printf("Port %u: \n", port);
-    printf("    MAC: %02"PRIx8 ":" "%02"PRIx8 ":" "%02"PRIx8 ":"
-			   "%02"PRIx8 ":" "%02"PRIx8 ":" "%02"PRIx8 "\n",
-			RTE_ETHER_ADDR_BYTES(&addr));
-    
-    rte_eth_dev_get_name_by_port(port, name);
-    printf("    Device Name: %s\n", name);
-    printf("    Driver Name: %s\n\n", dev_info.driver_name);
-
-    free(name);
-
-    if(strcmp(dev_info.driver_name, "net_vhost") == 0)
-        type = SEND_PORT;
-
-	retval = rte_eth_promiscuous_enable(port);
-	if (retval < 0)
-		return retval;
-
-	return type;
 }
 
 // 信号处理函数
@@ -233,38 +89,8 @@ static void signal_handler(int signum)
 	}
 }
 
-static void show_stats(void *param)
-{
-	FILE *log = (FILE *)param;
-	time_t now;
-    struct tm *local_time;
-    char timestamp[26];
-	uint64_t total = statistics.total_rx + statistics.total_tx;
-	uint64_t real = statistics.real_rx + statistics.real_tx;
-	uint64_t drop = total - real;
-
-	// 获取当前时间
-    time(&now);
-    local_time = localtime(&now);
-
-	// 格式化时间戳
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", local_time);
-
-	fprintf(log, "\n==================Packets statistics=======================");
-	fprintf(log, "\nPackets sent: %24"PRIu64
-			"\nPackets received: %20"PRIu64
-			"\nPackets dropped: %21"PRIu64,
-			statistics.real_tx,
-			statistics.real_rx,
-			drop);
-	fprintf(log, "\n===================%s=====================\n\n", timestamp);
-	fflush(stdout);
-
-	rte_eal_alarm_set(PERIOD * US_PER_S, show_stats, log);
-}
-
 int main(int argc, char *argv[]) {
-
+	int ret;
     unsigned int nb_ports;
     unsigned int nb_lcores;
     uint16_t portid;
@@ -277,9 +103,12 @@ int main(int argc, char *argv[]) {
 	force_quit = false;
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
+
+	if(generate_logdir(LOG_DIR) != 0)
+		return -1;
     
     // EAL环境初始化
-    int ret = rte_eal_init(argc, argv);
+    ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
     
@@ -310,7 +139,7 @@ int main(int argc, char *argv[]) {
     }		
     
     // 共享队列初始化
-	ring_init();
+	ring_init(fwd_ring, "fwd_ring");
 
     printf("\nStart Processing...\n\n");
 
@@ -321,9 +150,10 @@ int main(int argc, char *argv[]) {
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
 	rte_eal_remote_launch(send_pkt, &send_port, worker_id);
 
-	FILE *logfile = fopen("./vhost/packet.log", "w");
+	FILE *logfile = fopen(LOG_FILE, "w");
 	rte_eal_alarm_callback cb = show_stats;
-	rte_eal_alarm_set(PERIOD * MS_PER_S, cb, logfile);
+	statistics.log = logfile;
+	rte_eal_alarm_set(PERIOD * MS_PER_S, cb, &statistics);
 
 	// 等待工作核心结束任务
 	rte_eal_mp_wait_lcore();
@@ -339,7 +169,7 @@ int main(int argc, char *argv[]) {
 		printf("Done\n");
 	}
     
-	rte_eal_alarm_cancel(cb, logfile);
+	rte_eal_alarm_cancel(cb, &statistics);
 	fclose(logfile);
 	rte_ring_free(fwd_ring);
 
