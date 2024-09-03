@@ -11,21 +11,21 @@ from scapy.sendrecv import sr1, srp, sr, sendp, sniff
 from scapy.config import conf
 import time
 
-def packet_callback(packet):
-    if Ether in packet:
-        if packet['Ether'].src == '00:0c:29:6f:9e:ea':
-            packet.show()
+# def packet_callback(packet):
+#     if Ether in packet:
+#         if packet['Ether'].src == '00:0c:29:6f:9e:fe':
+#             packet.show()
 
 def pktgen():
     # 构建IP层和字符串消息
-    packet = Ether(src='11:11:11:22:22:22', dst='00:0c:29:6f:9e:e0') \
-                /IP(src='231.231.231.231', dst='123.123.123.123') \
-                /"Hello, From Scapy to DPDK!"
+    packet = Ether(src='11:11:11:22:22:22', dst='00:0c:29:6f:9e:fe') \
+                /IP(src='192.168.187.132', dst='250.250.250.250') \
+                /"Hello, From Scapy to DPDK!\0"
 
     # packet.show()
     
     # 发送数据包
-    sendp(packet, iface ='eth4', count = 4)
+    sendp(packet, iface ='eth2', count = 4)
 
 if __name__ == "__main__":
 
@@ -34,6 +34,6 @@ if __name__ == "__main__":
 
     while True:
         pktgen()
-        time.sleep(1)
+        time.sleep(5)
 
     
