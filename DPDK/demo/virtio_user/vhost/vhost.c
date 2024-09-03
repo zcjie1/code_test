@@ -23,10 +23,11 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 #include <rte_alarm.h>
+#include <rte_vhost.h>
 
 #define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 512
-#define BURST_SIZE 64
+#define BURST_SIZE 32
 
 #define RX_RING_NUM 1
 #define TX_RING_NUM 1
