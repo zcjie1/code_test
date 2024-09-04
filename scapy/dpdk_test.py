@@ -10,11 +10,18 @@ from scapy.layers.l2 import Ether
 from scapy.sendrecv import sr1, srp, sr, sendp, sniff
 from scapy.config import conf
 import time
+import psutil
+import os
 
 # def packet_callback(packet):
 #     if Ether in packet:
 #         if packet['Ether'].src == '00:0c:29:6f:9e:fe':
 #             packet.show()
+
+def set_cpu_affinity(core):
+    pid = os.getpid()
+    process = psutil.Process(pid)
+    process.cpu_affinity(core)
 
 def pktgen():
     # 构建IP层和字符串消息
@@ -25,15 +32,15 @@ def pktgen():
     # packet.show()
     
     # 发送数据包
-    sendp(packet, iface ='eth2', count = 4)
+    sendp(packet, iface ='eth1', count = 4096)
 
 if __name__ == "__main__":
-
+    set_cpu_affinity([3, 4, 5])
     # interface = "eth4"
     # sniff(iface=interface, prn=packet_callback, store=0)
 
     while True:
         pktgen()
-        time.sleep(5)
+        time.sleep(0.1)
 
     

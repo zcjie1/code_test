@@ -1,4 +1,7 @@
 {
     "python.analysis.typeCheckingMode": "basic",
-    "python.analysis.autoImportCompletions": true
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.extraPaths": [
+        "./.venv/lib/python3.10/site-packages"
+    ]
 }
