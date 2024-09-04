@@ -21,6 +21,6 @@ void show_stats(void *param);
 /* 初始化 */
 
 int port_init(uint16_t port, struct rte_mempool *mbuf_pool);
-void ring_init(struct rte_ring *fwd_ring, char *name);
+void ring_init(struct rte_ring **fwd_ring, char *name);
 
 #endif // !__VHOST_H__

@@ -1,9 +1,11 @@
-#ifndef __TYPE_H__
-#define __TYPE_H__
+#ifndef __COMMON_H__
+#define __COMMON_H__
+
+#include <time.h>
 
 #define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 512
-#define BURST_SIZE 32
+#define BURST_SIZE 128
 
 #define RX_RING_NUM 1
 #define TX_RING_NUM 0
@@ -36,4 +38,10 @@
 
 #define MATCH_TYPE(x, y) ((x) == (uint16_t)(y))
 
-#endif // !__TYPE_H__
+#define NS_PER_S 1000000000
+#define TIME_BUFFER_SIZE 30
+
+extern struct timespec start_time;
+void curr_time(struct timespec *time);
+
+#endif // !__COMMON_H__

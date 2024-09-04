@@ -15,6 +15,8 @@
 
 #include "virtio.h"
 
+struct timespec start_time;
+
 static bool same_mac(struct rte_ether_addr *a, struct rte_ether_addr *b)
 {
 	for(int i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
@@ -45,6 +47,8 @@ static int process_pkt(__rte_unused void *arg)
 
     struct rte_mbuf *bufs[BURST_SIZE];
 	int nb_rx = 0;
+
+	curr_time(&start_time);
 
 	while (!force_quit) {
 		nb_rx = rte_eth_rx_burst(0, 0, bufs, BURST_SIZE);

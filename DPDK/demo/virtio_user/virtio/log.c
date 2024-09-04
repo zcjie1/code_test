@@ -7,9 +7,10 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 
-#include "type.h"
+#include "common.h"
 
-static char* uint2str(uint16_t ether_type) {
+static char* uint2str(uint16_t ether_type)
+{
     switch(ether_type) {
         case SD_ETHER_TYPE_IPV4:
             return "IPv4";
@@ -29,18 +30,35 @@ static char* uint2str(uint16_t ether_type) {
     }
 }
 
+static void get_elapsed_time(char *buffer, size_t size)
+{
+    struct timespec current_time;
+    curr_time(&current_time);
+
+    long seconds = current_time.tv_sec - start_time.tv_sec;
+    long nanoseconds = current_time.tv_nsec - start_time.tv_nsec;
+    if (nanoseconds < 0) {
+        seconds--;
+        nanoseconds += NS_PER_S;
+    }
+    snprintf(buffer, size, "%ld.%09ld", seconds, nanoseconds);
+}
+
 void show_packet(FILE *log, struct rte_ether_addr src_mac, 
     struct rte_ether_addr dst_mac, uint16_t ether_type, 
     uint32_t src_ip, uint32_t dst_ip, char *msg)
 {
 	char smac[RTE_ETHER_ADDR_FMT_SIZE];
 	char dmac[RTE_ETHER_ADDR_FMT_SIZE];
+    char time_buffer[TIME_BUFFER_SIZE];
+
+    get_elapsed_time(time_buffer, TIME_BUFFER_SIZE);
 
     char *type = uint2str(ether_type);
 	rte_ether_format_addr(smac, RTE_ETHER_ADDR_FMT_SIZE, &src_mac);
 	rte_ether_format_addr(dmac, RTE_ETHER_ADDR_FMT_SIZE, &dst_mac);
     if(!src_ip || !dst_ip) {
-        fprintf(log, "%s frame: [NULL | %s] => [NULL | %s]\n", type, smac, dmac);
+        fprintf(log, "[%s] %s frame: [NULL | %s] => [NULL | %s]\n", time_buffer, type, smac, dmac);
         return;
     }
 
@@ -49,5 +67,9 @@ void show_packet(FILE *log, struct rte_ether_addr src_mac,
 	inet_ntop(AF_INET, &src_ip, sip, INET_ADDRSTRLEN);
 	inet_ntop(AF_INET, &dst_ip, dip, INET_ADDRSTRLEN);
 
-	fprintf(log, "%s frame: [%s | %s] ==> [%s | %s]\n", type, sip, smac, dip, dmac);
+	fprintf(log, "[%s] %s frame: <%s | %s> ==> <%s | %s> ", time_buffer, type, sip, smac, dip, dmac);
+    fprintf(log, "%s\n", msg);
+
+    free(sip);
+    free(dip);
 }

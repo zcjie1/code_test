@@ -1,9 +1,10 @@
 # DPDK docker image
-# docker build -f ./virtio/Dockerfile -t dpdk-virtio ~/code_test/DPDK/
+# docker build  -t dpdk-virtio .
 
 FROM dpdk-base:latest
 
-COPY ./virtio.c /usr/src/virtio/
+COPY ./*.c /usr/src/virtio/
+COPY ./*.h /usr/src/virtio/
 COPY ./Makefile /usr/src/virtio/
 
 WORKDIR /usr/src/virtio

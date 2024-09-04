@@ -5,7 +5,7 @@
 APP = virtio
 
 # all source are stored in SRCS-y
-SRCS-y := virtio.c
+SRCS-y := virtio.c init.c log.c
 
 PKGCONF ?= pkg-config
 

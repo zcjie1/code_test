@@ -113,8 +113,8 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 }
 
 // 共享队列初始化
-void ring_init(struct rte_ring *fwd_ring, char *name)
+void ring_init(struct rte_ring **fwd_ring, char *name)
 {
-	fwd_ring = rte_ring_create(name, RX_RING_SIZE,
+	*fwd_ring = rte_ring_create(name, RX_RING_SIZE,
 					rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
 }

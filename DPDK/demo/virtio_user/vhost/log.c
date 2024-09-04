@@ -36,16 +36,16 @@ int generate_logdir(char *dir_path) {
 
 void show_stats(void *param)
 {
-    struct status *statistics = (struct status*)param;
+    struct status *statistics = (struct status *)param;
     FILE *log = statistics->log;
 
 	time_t now;
     struct tm *local_time;
     char timestamp[26];
 
-	uint64_t total = statistics->total_rx + statistics->total_tx;
-	uint64_t real = statistics->real_rx + statistics->real_tx;
-	uint64_t drop = total - real;
+    uint64_t rx_drop = statistics->total_rx - statistics->real_rx;
+    uint64_t tx_drop = statistics->total_tx - statistics->real_tx;
+	uint64_t total_drop = rx_drop + tx_drop;
 
 	// 获取当前时间
     time(&now);
@@ -57,10 +57,14 @@ void show_stats(void *param)
 	fprintf(log, "\n==================Packets statistics=======================");
 	fprintf(log, "\nPackets sent: %24"PRIu64
 			"\nPackets received: %20"PRIu64
-			"\nPackets dropped: %21"PRIu64,
+			"\nPackets dropped: %21"PRIu64
+            "\nPackets TX dropped: %18"PRIu64
+            "\nPackets RX dropped: %18"PRIu64,
 			statistics->real_tx,
 			statistics->real_rx,
-			drop);
+			total_drop,
+            tx_drop,
+            rx_drop);
 	fprintf(log, "\n===================%s=====================\n\n", timestamp);
 	fflush(stdout);
 

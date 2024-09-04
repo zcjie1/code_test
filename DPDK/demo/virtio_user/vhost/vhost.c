@@ -50,7 +50,7 @@ static int recv_pkt(void *arg)
 static int send_pkt(void *arg)
 {
 	uint16_t port = *( (uint16_t *)arg );
-	struct rte_mbuf *bufs[BURST_SIZE];
+	struct rte_mbuf *bufs[TX_SIZE];
 	struct rte_mbuf *tmp;
 	int burst = 0;
 	int retval = 0;
@@ -60,17 +60,23 @@ static int send_pkt(void *arg)
 	rte_eth_macaddr_get(port, &src_mac);
 
 	while(!force_quit) {
+		burst = 0;
 		retval = rte_ring_dequeue(fwd_ring, (void **)&tmp);
-		while(burst < BURST_SIZE && retval == 0) {
+		while(burst < TX_SIZE && retval == 0) {
 			bufs[burst++] = tmp;
 			retval = rte_ring_dequeue(fwd_ring, (void **)&tmp);
 		}
+		if(!burst)
+			continue;
 
 		statistics.total_tx += burst;
 
 		nb_tx = rte_eth_tx_burst(port, 0, bufs, burst);
 		statistics.real_tx += nb_tx;
-		burst -= nb_tx;
+		if (unlikely(nb_tx < burst)) {
+			for (uint16_t i = nb_tx; i < burst; i++)
+				rte_pktmbuf_free(bufs[i]);
+		}
 	}
 
 	while(rte_ring_dequeue(fwd_ring, (void **)&tmp) == 0)
@@ -139,16 +145,17 @@ int main(int argc, char *argv[]) {
     }		
     
     // 共享队列初始化
-	ring_init(fwd_ring, "fwd_ring");
+	ring_init(&fwd_ring, "fwd_ring");
 
     printf("\nStart Processing...\n\n");
 
     // 分配工作核心任务
     unsigned int worker_id = -1;
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(recv_pkt, &recv_port, worker_id);
-	worker_id = rte_get_next_lcore(worker_id, 1, 0);
 	rte_eal_remote_launch(send_pkt, &send_port, worker_id);
+	worker_id = rte_get_next_lcore(worker_id, 1, 0);
+	rte_eal_remote_launch(recv_pkt, &recv_port, worker_id);
+	
 
 	FILE *logfile = fopen(LOG_FILE, "w");
 	rte_eal_alarm_callback cb = show_stats;

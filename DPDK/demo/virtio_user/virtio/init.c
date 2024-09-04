@@ -7,7 +7,12 @@
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
 
-#include "type.h"
+#include "common.h"
+
+void curr_time(struct timespec *time)
+{
+	clock_gettime(CLOCK_MONOTONIC, time);
+}
 
 int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {

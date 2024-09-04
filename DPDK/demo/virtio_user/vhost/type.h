@@ -5,14 +5,15 @@
 
 #define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 512
-#define BURST_SIZE 32
+#define BURST_SIZE 128
+#define TX_SIZE 32
 
 #define RX_RING_NUM 1
 #define TX_RING_NUM 1
 #define RX_RING_SIZE 2048
 #define TX_RING_SIZE 2048
 
-#define PERIOD 5
+#define PERIOD 1
 
 struct status {
     FILE *log;
