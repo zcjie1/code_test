@@ -35,7 +35,7 @@ def pktgen():
     sendp(packet, iface ='eth1', count = 4096)
 
 if __name__ == "__main__":
-    set_cpu_affinity([3, 4, 5])
+    set_cpu_affinity([3, 4])
     # interface = "eth4"
     # sniff(iface=interface, prn=packet_callback, store=0)
 
