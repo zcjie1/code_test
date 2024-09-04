@@ -3,6 +3,13 @@
 
 #include <time.h>
 
+struct statistic {
+    uint64_t rx_num;
+    uint64_t rx_bytes;
+};
+
+extern struct statistic result;
+
 #define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 128

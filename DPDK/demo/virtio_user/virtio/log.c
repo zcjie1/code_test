@@ -73,3 +73,34 @@ void show_packet(FILE *log, struct rte_ether_addr src_mac,
     free(sip);
     free(dip);
 }
+
+void show_result(FILE *log)
+{
+    uint64_t rx_num = result.rx_num;
+    uint64_t rx_bytes = result.rx_bytes;
+
+    struct timespec current_time;
+    curr_time(&current_time);
+
+    long seconds = current_time.tv_sec - start_time.tv_sec;
+    long nanoseconds = current_time.tv_nsec - start_time.tv_nsec;
+    if (nanoseconds < 0) {
+        seconds--;
+        nanoseconds += NS_PER_S;
+    }
+    long millionseconds = nanoseconds / 1000000;
+    double real_seconds = seconds + (millionseconds / 1000);
+
+    double rate = (double)rx_bytes / real_seconds;
+    rate = rate / 1000; // MB
+
+    fprintf(log, "\n==================Packets statistics=======================");
+	fprintf(log, "\nPackets receive: %24""lu"
+			"\nBytes receive: %26""lu"
+            "\nTransmission Rate: %22"".2f""MB/s",
+			rx_num,
+			rx_bytes,
+			rate);
+	fprintf(log, "\n==========================================================\n\n");
+	fflush(stdout);
+}

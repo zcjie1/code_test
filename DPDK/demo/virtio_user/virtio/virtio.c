@@ -16,6 +16,7 @@
 #include "virtio.h"
 
 struct timespec start_time;
+struct statistic result;
 
 static bool same_mac(struct rte_ether_addr *a, struct rte_ether_addr *b)
 {
@@ -39,6 +40,7 @@ static int process_pkt(__rte_unused void *arg)
 	struct rte_ether_addr src_mac, dst_mac;
 	uint16_t ether_type;
 	uint32_t src_ip, dst_ip;
+	uint16_t ip_len;
     void *data;
 	int ret;
 
@@ -54,7 +56,8 @@ static int process_pkt(__rte_unused void *arg)
 		nb_rx = rte_eth_rx_burst(0, 0, bufs, BURST_SIZE);
 		if (unlikely(nb_rx == 0))
 			continue;
-        
+		
+        result.rx_num += nb_rx;
         for(int i = 0; i < nb_rx; i++) {
             pkt = bufs[i];
 
@@ -65,7 +68,7 @@ static int process_pkt(__rte_unused void *arg)
             ether_type = eth_hdr->ether_type;
 
             if(!MATCH_TYPE(ether_type, SD_ETHER_TYPE_IPV4) || !same_mac(&src_mac, &send_mac)) {
-				show_packet(packet_log, src_mac, dst_mac, ether_type, 0, 0, NULL);
+				// show_packet(packet_log, src_mac, dst_mac, ether_type, 0, 0, NULL);
                 rte_pktmbuf_free(pkt);
                 continue;
             }
@@ -74,15 +77,20 @@ static int process_pkt(__rte_unused void *arg)
             ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
             src_ip = ipv4_hdr->src_addr;
             dst_ip = ipv4_hdr->dst_addr;
+			ip_len = ntohs(ipv4_hdr->total_length);
+
+			result.rx_bytes += (uint64_t)ip_len + 14;
 
             // 解析字符串消息
-            data = (void *)(ipv4_hdr + 1);
-            memccpy(msg, data, '\0', 255);
-            show_packet(packet_log, src_mac, dst_mac, ether_type, src_ip, dst_ip, msg);
+            // data = (void *)(ipv4_hdr + 1);
+            // memccpy(msg, data, '\0', 255);
+            // show_packet(packet_log, src_mac, dst_mac, ether_type, src_ip, dst_ip, msg);
 
             rte_pktmbuf_free(pkt);
         }
 	}
+
+	show_result(statistic_log);
 
 	fclose(statistic_log);
 	fclose(packet_log);

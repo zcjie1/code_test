@@ -18,4 +18,6 @@ void show_packet(FILE *log, struct rte_ether_addr src_mac,
     struct rte_ether_addr dst_mac, uint16_t ether_type, 
     uint32_t src_ip, uint32_t dst_ip, char *msg);
 
+void show_result(FILE *log);
+
 #endif // !__VIRTIO_H__
