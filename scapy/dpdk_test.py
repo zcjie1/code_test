@@ -7,14 +7,29 @@ import os
 import time
 import psutil
 import threading
+import random
+import string
+
+def generate_random_string(length):
+    # 选择字符集，例如ASCII字母和数字
+    characters = string.ascii_letters + string.digits
+    
+    # 生成随机字符串
+    random_string = ''.join(random.choices(characters, k=length))
+    
+    # 在字符串末尾添加'\0'字符
+    random_string += '\0'
+    
+    return random_string
 
 total_send_packets = 0
 total_send_bytes = 0
 send_rate = 0
 
+custom_str = generate_random_string(1479)
 packet = Ether(src='11:11:11:22:22:22', dst='00:0c:29:6f:9e:fe') \
                 /IP(src='192.168.187.132', dst='250.250.250.250') \
-                /"Hello, From Scapy to DPDK!!!!\0"
+                /custom_str
 packet_length = len(packet)
 
 def set_cpu_affinity(core):
