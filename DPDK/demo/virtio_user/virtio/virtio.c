@@ -67,7 +67,7 @@ static int process_pkt(__rte_unused void *arg)
             dst_mac = eth_hdr->dst_addr;
             ether_type = eth_hdr->ether_type;
 
-            if(!MATCH_TYPE(ether_type, SD_ETHER_TYPE_IPV4) || !same_mac(&src_mac, &send_mac)) {
+            if(!MATCH_TYPE(ether_type, SD_ETHER_TYPE_IPV4)) {
 				// show_packet(packet_log, src_mac, dst_mac, ether_type, 0, 0, NULL);
                 rte_pktmbuf_free(pkt);
                 continue;
@@ -75,8 +75,8 @@ static int process_pkt(__rte_unused void *arg)
 
             // 解析三层网络
             ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
-            src_ip = ipv4_hdr->src_addr;
-            dst_ip = ipv4_hdr->dst_addr;
+            // src_ip = ipv4_hdr->src_addr;
+            // dst_ip = ipv4_hdr->dst_addr;
 			ip_len = ntohs(ipv4_hdr->total_length);
 
 			result.rx_bytes += (uint64_t)ip_len + 14;

@@ -2,6 +2,7 @@
 #define __VHOST_H__
 
 #include "type.h"
+#include <rte_eth_vhost.h>
 
 #define LOG_DIR "log"
 #define LOG_FILE "log/vhost_statistic.log"
@@ -15,7 +16,8 @@ struct rte_ring *fwd_ring;
 /* 日志 */
 
 int generate_logdir(char *dir_path);
-void show_stats(void *param);
+void period_show_stats(void *param);
+void show_results(void *param);
 
 
 /* 初始化 */

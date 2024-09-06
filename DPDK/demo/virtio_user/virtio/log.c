@@ -92,12 +92,12 @@ void show_result(FILE *log)
     double real_seconds = seconds + (millionseconds / 1000);
 
     double rate = (double)rx_bytes / real_seconds;
-    rate = rate / 1000; // MB
+    rate = rate / 1000000; // MB
 
     fprintf(log, "\n==================Packets statistics=======================");
 	fprintf(log, "\nPackets receive: %24""lu"
 			"\nBytes receive: %26""lu"
-            "\nTransmission Rate: %22"".2f""MB/s",
+            "\nTransmission Rate: %18"".2f""MB/s",
 			rx_num,
 			rx_bytes,
 			rate);

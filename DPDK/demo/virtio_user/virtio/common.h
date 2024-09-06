@@ -10,13 +10,13 @@ struct statistic {
 
 extern struct statistic result;
 
-#define NUM_MBUFS 4096
+#define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 128
 
 #define RX_RING_NUM 1
 #define TX_RING_NUM 0
-#define RX_RING_SIZE 2048
+#define RX_RING_SIZE 4096
 #define TX_RING_SIZE 0
 
 #define LOG_STATISTIC "/var/log/virtio_statistic.log"
@@ -43,7 +43,7 @@ extern struct statistic result;
 #define SD_ETHER_TYPE_MPLSM ((uint16_t)0x4888) /**< MPLS multicast ethertype. */
 #define SD_ETHER_TYPE_ECPRI ((uint16_t)0xFEAE) /**< eCPRI ethertype (.1Q supported). */
 
-#define MATCH_TYPE(x, y) ((x) == (uint16_t)(y))
+#define MATCH_TYPE(x, y) ((x) == (y))
 
 #define NS_PER_S 1000000000
 #define TIME_BUFFER_SIZE 30

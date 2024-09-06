@@ -1,15 +1,17 @@
 
 .PHONY: host_app docker_app vhost virtio
 
+# --log-level pmd.net.vhost:debug \
+# --log-level lib.vhost.config:debug \
+# --log-level lib.vhost.data:debug
 host_app:
 	sudo vhost/build/vhost \
 		-l 0-2 \
 		--vdev 'eth_vhost0,iface=/tmp/sock0' \
 		--file-prefix=host \
-		--log-level pmd.net.vhost:debug \
-		--log-level lib.vhost.config:debug \
-		--log-level lib.vhost.data:debug \
 
+# --log-level pmd.net.virtio.init:debug \
+# --log-level pmd.net.virtio.driver:debug
 docker_app:
 	docker run \
 		-it --rm \
@@ -19,12 +21,12 @@ docker_app:
 		-v ./log/virtio_packet.log:/var/log/virtio_packet.log \
 		-v ./log/virtio_statistic.log:/var/log/virtio_statistic.log \
 		dpdk-virtio virtio-static \
-			-l 6-7 -m 1024  \
+			-l 10-11 -m 1024  \
 			--no-pci \
 			--vdev=virtio_user0,path=/var/run/usvhost0 \
 			--file-prefix=container \
-			--log-level pmd.net.virtio.init:debug \
-			--log-level pmd.net.virtio.driver:debug \
+
+all: vhost virtio		
 
 vhost:
 	@cd vhost && \

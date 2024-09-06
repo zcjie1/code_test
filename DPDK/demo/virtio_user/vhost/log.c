@@ -34,7 +34,7 @@ int generate_logdir(char *dir_path) {
     return 0;
 }
 
-void show_stats(void *param)
+void period_show_stats(void *param)
 {
     struct status *statistics = (struct status *)param;
     FILE *log = statistics->log;
@@ -43,8 +43,8 @@ void show_stats(void *param)
     struct tm *local_time;
     char timestamp[26];
 
-    uint64_t rx_drop = statistics->total_rx - statistics->real_rx;
-    uint64_t tx_drop = statistics->total_tx - statistics->real_tx;
+    uint64_t rx_drop = statistics->total_rx_num - statistics->real_rx_num;
+    uint64_t tx_drop = statistics->total_tx_num - statistics->real_tx_num;
 	uint64_t total_drop = rx_drop + tx_drop;
 
 	// 获取当前时间
@@ -60,13 +60,64 @@ void show_stats(void *param)
 			"\nPackets dropped: %21"PRIu64
             "\nPackets TX dropped: %18"PRIu64
             "\nPackets RX dropped: %18"PRIu64,
-			statistics->real_tx,
-			statistics->real_rx,
+			statistics->real_tx_num,
+			statistics->real_rx_num,
 			total_drop,
             tx_drop,
             rx_drop);
 	fprintf(log, "\n===================%s=====================\n\n", timestamp);
-	fflush(stdout);
+	fflush(log);
 
-	rte_eal_alarm_set(PERIOD * US_PER_S, show_stats, statistics);
+	rte_eal_alarm_set(PERIOD * US_PER_S, period_show_stats, statistics);
+}
+
+void show_results(void *param)
+{
+    struct status *s = (struct status *)param;
+    FILE *log = s->log;
+    char time_buffer[30];
+    double rx_rate = 0.0;
+    double tx_rate = 0.0;
+    
+    clock_gettime(CLOCK_MONOTONIC, &s->end_time);
+    long seconds = s->end_time.tv_sec - s->start_time.tv_sec;
+    long nanoseconds = s->end_time.tv_nsec - s->start_time.tv_nsec;
+    if (nanoseconds < 0) {
+        seconds--;
+        nanoseconds += NS_PER_S;
+    }
+    snprintf(time_buffer, 30, "%ld.%09ld", seconds, nanoseconds);
+    double real_time = seconds + nanoseconds / (double)NS_PER_S;
+    
+    uint64_t rx_drop = s->total_rx_num - s->real_rx_num;
+    uint64_t tx_drop = s->total_tx_num - s->real_tx_num;
+	uint64_t total_drop = rx_drop + tx_drop;
+
+    rx_rate = (double)s->rx_bytes / real_time / 1000 / 1000;
+    tx_rate = (double)s->tx_bytes / real_time / 1000 / 1000;
+
+    fprintf(log, "\n==================Packets statistics=======================");
+	fprintf(log,
+            "\nDuration Time: %22ss"
+			"\nPackets received: %20"PRIu64
+            "\nBytes received: %22"PRIu64
+            "\nReceive Rate: %20.2fMB/s"
+            "\nPackets sent: %24"PRIu64
+            "\nBytes sent: %26"PRIu64
+            "\nSend Rate: %23.2fMB/s"
+			"\nPackets dropped: %21"PRIu64
+            "\nPackets RX dropped: %18"PRIu64
+            "\nPackets TX dropped: %18"PRIu64,
+            time_buffer,
+			s->real_rx_num,
+            s->rx_bytes,
+            rx_rate,
+            s->real_tx_num,
+            s->tx_bytes,
+            tx_rate,
+			total_drop,
+            rx_drop,
+            tx_drop);
+	fprintf(log, "\n===========================================================\n\n");
+	fflush(log);
 }
