@@ -78,6 +78,7 @@ void show_result(FILE *log)
 {
     uint64_t rx_num = result.rx_num;
     uint64_t rx_bytes = result.rx_bytes;
+    char time_buffer[30];
 
     struct timespec current_time;
     curr_time(&current_time);
@@ -88,16 +89,21 @@ void show_result(FILE *log)
         seconds--;
         nanoseconds += NS_PER_S;
     }
+    snprintf(time_buffer, 30, "%ld.%09ld", seconds, nanoseconds);
     long millionseconds = nanoseconds / 1000000;
     double real_seconds = seconds + (millionseconds / 1000);
 
     double rate = (double)rx_bytes / real_seconds;
     rate = rate / 1000000; // MB
+    rate = rate * 8; // Mb
 
     fprintf(log, "\n==================Packets statistics=======================");
-	fprintf(log, "\nPackets receive: %24""lu"
+	fprintf(log,
+            "\nDuration Time: %26ss"
+            "\nPackets receive: %24""lu"
 			"\nBytes receive: %26""lu"
-            "\nTransmission Rate: %18"".2f""MB/s",
+            "\nTransmission Rate: %18"".2f""Mb/s",
+            time_buffer,
 			rx_num,
 			rx_bytes,
 			rate);

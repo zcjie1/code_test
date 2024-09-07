@@ -52,7 +52,11 @@ static int recv_pkt(void *arg)
 	 * 当virtio端设置完成，vhost驱动通过vring_state_changed函数调用注册的回调函数
 	 * 回调函数中将fore_quit设置为false
 	 */
-	while(force_quit);
+	while(!start_ready) {
+		if(force_quit)
+			return 0;
+		usleep(10);
+	}
 
 	printf("Start Receiving...\n");
 	while(!force_quit) {
@@ -96,7 +100,11 @@ static int send_pkt(void *arg)
 	 * 当virtio端设置完成，vhost驱动通过vring_state_changed函数调用注册的回调函数(virtio_ready)
 	 * 回调函数中将fore_quit设置为false
 	 */
-	while(force_quit);
+	while(!start_ready) {
+		if(force_quit)
+			return 0;
+		usleep(10);
+	}
 
 	printf("Start Sending...\n");
 	while(!force_quit) {
@@ -152,7 +160,7 @@ static int virtio_ready(uint16_t port_id,
 	struct rte_eth_vhost_queue_event event;
 	rte_eth_vhost_get_queue_event(port_id, &event);
 	if(event.enable) {
-		force_quit = false;
+		start_ready = true;
 		clock_gettime(CLOCK_MONOTONIC, &statistics.start_time);
 		printf("Virtio Ready for Receiving Packet\n");
 	}
@@ -170,7 +178,8 @@ int main(int argc, char *argv[]) {
     uint16_t recv_port = 0;
 	uint16_t send_port = 1;
 
-	force_quit = true;
+	force_quit = false;
+	start_ready = false;
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 

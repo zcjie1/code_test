@@ -10,6 +10,7 @@ struct statistic {
 
 extern struct statistic result;
 
+// #define MBUF_BUF_SIZE 9600
 #define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 128

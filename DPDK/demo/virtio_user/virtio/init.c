@@ -44,6 +44,8 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	// 配置port_conf
 	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+	if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_SCATTER)
+		port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 
 	// 设置网卡对应的ring数量
 	retval = rte_eth_dev_configure(port, RX_RING_NUM, TX_RING_NUM, &port_conf);
@@ -75,6 +77,10 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		if (retval < 0)
 			return retval;
 	}
+
+	// 设置MTU
+	if(rte_eth_dev_set_mtu(port, 9000) < 0)
+		printf("Failed to set MTU on Port %u\n", port);
 
 	retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
 	if (retval < 0)

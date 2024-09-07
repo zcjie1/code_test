@@ -8,6 +8,7 @@
 #define LOG_FILE "log/vhost_statistic.log"
 
 bool force_quit = false;
+bool start_ready = false;
 
 struct status statistics;
 

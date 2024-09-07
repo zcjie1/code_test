@@ -95,16 +95,18 @@ void show_results(void *param)
 
     rx_rate = (double)s->rx_bytes / real_time / 1000 / 1000;
     tx_rate = (double)s->tx_bytes / real_time / 1000 / 1000;
+    rx_rate = rx_rate * 8;
+    tx_rate = tx_rate * 8;
 
     fprintf(log, "\n==================Packets statistics=======================");
 	fprintf(log,
             "\nDuration Time: %22ss"
 			"\nPackets received: %20"PRIu64
             "\nBytes received: %22"PRIu64
-            "\nReceive Rate: %20.2fMB/s"
+            "\nReceive Rate: %20.2fMb/s"
             "\nPackets sent: %24"PRIu64
             "\nBytes sent: %26"PRIu64
-            "\nSend Rate: %23.2fMB/s"
+            "\nSend Rate: %23.2fMb/s"
 			"\nPackets dropped: %21"PRIu64
             "\nPackets RX dropped: %18"PRIu64
             "\nPackets TX dropped: %18"PRIu64,
