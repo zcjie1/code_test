@@ -11,14 +11,14 @@ struct statistic {
 extern struct statistic result;
 
 // #define MBUF_BUF_SIZE 9600
-#define NUM_MBUFS 8192
+#define NUM_MBUFS 4096
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 128
 
 #define RX_RING_NUM 1
-#define TX_RING_NUM 0
-#define RX_RING_SIZE 4096
-#define TX_RING_SIZE 0
+#define TX_RING_NUM 1
+#define RX_RING_SIZE 1024
+#define TX_RING_SIZE 256
 
 #define LOG_STATISTIC "/var/log/virtio_statistic.log"
 #define LOG_PACKET "/var/log/virtio_packet.log"

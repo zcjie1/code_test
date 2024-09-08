@@ -4,10 +4,12 @@
 #include <rte_ether.h>
 #include "common.h"
 
+#define PERIOD 8
+
 bool force_quit = false;
 
-struct rte_ether_addr send_mac = {
-    .addr_bytes = { 0x11, 0x11, 0x11, 0x22, 0x22, 0x22 }
+struct rte_ether_addr broadcast_mac = {
+    .addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
 };
 
 // 初始化
@@ -19,5 +21,6 @@ void show_packet(FILE *log, struct rte_ether_addr src_mac,
     uint32_t src_ip, uint32_t dst_ip, char *msg);
 
 void show_result(FILE *log);
+void period_alarm_vhost(void *arg);
 
 #endif // !__VIRTIO_H__

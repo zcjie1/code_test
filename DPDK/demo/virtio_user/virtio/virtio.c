@@ -12,6 +12,7 @@
 #include <rte_cycles.h>
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
+#include <rte_alarm.h>
 
 #include "virtio.h"
 
@@ -75,11 +76,17 @@ static int process_pkt(__rte_unused void *arg)
 
             // 解析三层网络
             ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
-            // src_ip = ipv4_hdr->src_addr;
-            // dst_ip = ipv4_hdr->dst_addr;
+            src_ip = ipv4_hdr->src_addr;
+            dst_ip = ipv4_hdr->dst_addr;
 			ip_len = ntohs(ipv4_hdr->total_length);
 
 			result.rx_bytes += (uint64_t)ip_len + 14;
+
+			if(same_mac(&dst_mac, &broadcast_mac)) {
+				data = (void *)(ipv4_hdr + 1);
+				memccpy(msg, data, '\0', 255);
+				show_packet(packet_log, src_mac, dst_mac, ether_type, src_ip, dst_ip, msg);
+			}
 
             // 解析字符串消息
             // data = (void *)(ipv4_hdr + 1);
@@ -97,6 +104,78 @@ static int process_pkt(__rte_unused void *arg)
 	free(msg);
 	return 0;
         
+}
+
+static int send_pkt(void *arg)
+{
+	const struct rte_ether_addr src_mac = {
+		.addr_bytes = { 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc }
+	};
+	const struct rte_ether_addr dst_mac = { 
+		.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } 
+	};
+	char sip[] = "192.0.2.1";
+	char dip[] = "192.0.2.254";
+	struct rte_mempool *mbuf_pool = (struct rte_mempool *)arg;
+
+	struct rte_mbuf *pkt = rte_pktmbuf_alloc(mbuf_pool);
+	if(!pkt) {
+		printf("Failed to allocate mbuf\n");
+		return -1;
+	}
+
+	// Meta data 初始化
+	pkt->data_len = 14 + 20 + 15; // MAC + IPv4 + Message
+	pkt->data_off = RTE_PKTMBUF_HEADROOM;
+	pkt->pkt_len = 14 + 20 + 15;
+	pkt->nb_segs = 1;
+	// pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
+	pkt->l2_len	= sizeof(struct rte_ether_hdr);
+	pkt->l3_len	= sizeof(struct rte_ipv4_hdr);
+	pkt->next = NULL;
+
+	// printf("Meta data initialized\n");
+
+	// 二层初始化
+	struct rte_ether_hdr *eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
+	rte_ether_addr_copy(&src_mac, &eth_hdr->src_addr);
+	rte_ether_addr_copy(&dst_mac, &eth_hdr->dst_addr);
+	eth_hdr->ether_type = SD_ETHER_TYPE_IPV4;
+
+	// printf("L2 initialized\n");
+
+	// 三层初始化
+	struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
+	memset(ipv4_hdr, 0, sizeof(struct rte_ipv4_hdr));
+	ipv4_hdr->version_ihl = RTE_IPV4_VHL_DEF;
+	ipv4_hdr->type_of_service = 0;
+	ipv4_hdr->total_length = htons((uint16_t)35);
+	ipv4_hdr->packet_id = 0;
+	ipv4_hdr->fragment_offset = 0;
+	ipv4_hdr->time_to_live = 64;
+	ipv4_hdr->next_proto_id = IPPROTO_RAW;
+	ipv4_hdr->src_addr = inet_addr(sip);
+	ipv4_hdr->dst_addr = inet_addr(dip);
+	ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
+	char *data = (char *)(ipv4_hdr + 1);
+	memcpy(data, "Hello, world!\0", 15);
+
+	rte_mbuf_refcnt_set(pkt, 1);
+
+	while(!force_quit) {
+		rte_delay_ms(1000);
+		rte_mbuf_refcnt_update(pkt, 1);
+		int nb_tx = rte_eth_tx_burst(0, 0, &pkt, 1);
+		if(nb_tx < 1) {
+			rte_pktmbuf_free(pkt);
+			printf("Failed to transmit all packets\n");
+		} else {
+			printf("Send %d packet\n", nb_tx);
+		}
+	}
+
+	rte_pktmbuf_free(pkt);
+	return 0;
 }
 
 // 信号处理函数
@@ -152,7 +231,13 @@ int main(int argc, char *argv[]) {
     // 分配工作核心任务
     unsigned int worker_id = -1;
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(process_pkt, NULL , worker_id);
+	rte_eal_remote_launch(process_pkt, NULL, worker_id);
+	worker_id = rte_get_next_lcore(worker_id, 1, 0);
+	rte_eal_remote_launch(send_pkt, mbuf_pool, worker_id);
+
+	// printf("\nStarting loop alarm...\n\n");
+	// rte_eal_alarm_callback cb = period_alarm_vhost;
+	// rte_eal_alarm_set(PERIOD * MS_PER_S, cb, mbuf_pool);
 
     // 等待工作核心结束任务
 	rte_eal_mp_wait_lcore();

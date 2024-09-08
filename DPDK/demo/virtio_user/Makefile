@@ -10,6 +10,9 @@ host_app:
 		-l 0-2 \
 		--vdev 'eth_vhost0,iface=/tmp/sock0' \
 		--file-prefix=host \
+		--log-level pmd.net.vhost:debug \
+		--log-level lib.vhost.config:debug \
+		--log-level lib.vhost.data:debug
 
 # --log-level pmd.net.virtio.init:debug \
 # --log-level pmd.net.virtio.driver:debug
@@ -23,10 +26,19 @@ docker_app:
 		-v ./log/virtio_packet.log:/var/log/virtio_packet.log \
 		-v ./log/virtio_statistic.log:/var/log/virtio_statistic.log \
 		dpdk-virtio virtio-static \
-			-l 10-11 \
+			-l 9-11 \
 			--no-pci \
-			--vdev=virtio_user0,path=/var/run/usvhost0 \
+			--vdev=virtio_user0,path=/var/run/usvhost0,queue_size=1024 \
 			--file-prefix=container \
+			--log-level lib.mempool:debug \
+			--log-level lib.mbuf:debug \
+			--log-level lib.ethdev:debug \
+			--log-level lib.net:debug \
+			--log-level lib.port:debug \
+			--log-level pmd.net.virtio.init:debug \
+			--log-level pmd.net.virtio.driver:debug \
+			--log-level pmd:debug \
+			
 
 hping3:
 	sudo hping3 --flood -I eth1 --rand-dest -t 1 -d 1460 --verbose 192.168.116.128

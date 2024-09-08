@@ -78,8 +78,8 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	}
 
 	// 设置MTU
-	if(rte_eth_dev_set_mtu(port, 9000) < 0)
-		printf("Failed to set MTU on port %u\n", port);
+	// if(rte_eth_dev_set_mtu(port, 9000) < 0)
+	// 	printf("Failed to set MTU on port %u\n", port);
 
 	retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
 	if (retval < 0)

@@ -22,9 +22,9 @@ static: build/$(APP)-static
 	@ln -sf $(APP)-static build/$(APP)
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
-CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+CFLAGS += $(shell $(PKGCONF) --cflags libdpdk)
 # Add flag to allow experimental API as l2fwd uses rte_ethdev_set_ptype API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -O3 -DALLOW_EXPERIMENTAL_API
 CFLAGS += -g -Wno-address-of-packed-member
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)

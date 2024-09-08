@@ -81,8 +81,6 @@ static int recv_pkt(void *arg)
 	return 0;
 }
 
-
-
 // 从fwd_ring取出数据包，发送至virtio端
 static int send_pkt(void *arg)
 {
@@ -92,6 +90,9 @@ static int send_pkt(void *arg)
 	int burst = 0;
 	int retval = 0;
 	uint16_t nb_tx = 0;
+
+	struct rte_mbuf *rx_buf[1];
+	uint16_t nb_rx = 0;
 
 	uint16_t ip_len;
 
@@ -108,6 +109,18 @@ static int send_pkt(void *arg)
 
 	printf("Start Sending...\n");
 	while(!force_quit) {
+		// 接收virtio端发送的定时消息并转发回去
+		nb_rx = rte_eth_rx_burst(port, 0, rx_buf, 1);
+		if(nb_rx) {
+			nb_tx = rte_eth_tx_burst(port, 0, rx_buf, 1);
+			if (unlikely(nb_tx < 1)) {
+				rte_pktmbuf_free(rx_buf[0]);
+				printf("Fail to forward packet\n");
+			} else {
+				printf("Forward packet successfully\n");
+			}
+		}
+
 		burst = 0;
 		retval = rte_ring_dequeue(fwd_ring, (void **)&tmp);
 		while(burst < TX_SIZE && retval == 0) {
@@ -131,7 +144,6 @@ static int send_pkt(void *arg)
 				statistics.tx_bytes -= (uint64_t)ip_len + 14;
 				rte_pktmbuf_free(bufs[i]);
 			}
-				
 		}
 	}
 
