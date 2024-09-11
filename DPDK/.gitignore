@@ -2,3 +2,4 @@
 dpdk/
 .*
 Pktgen-DPDK/
+ovs/

@@ -21,7 +21,7 @@ docker_app:
 		-it --rm  \
 		--privileged \
 		--name virtio-recv \
-		-v /tmp/sock0:/var/run/usvhost0 \
+		-v /usr/local/var/run/openvswitch/vhost_sock/vhost0:/var/run/usvhost0 \
 		-v /dev/hugepages:/dev/hugepages \
 		-v ./log/virtio_packet.log:/var/log/virtio_packet.log \
 		-v ./log/virtio_statistic.log:/var/log/virtio_statistic.log \
