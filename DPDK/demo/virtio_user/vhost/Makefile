@@ -4,8 +4,12 @@
 # binary name
 APP = vhost
 
+# Directories
+SRC_DIR = ./src
+INC_DIR = ./include
+
 # all source are stored in SRCS-y
-SRCS-y := vhost.c init.c log.c
+SRCS-y := vhost.c $(wildcard $(SRC_DIR)/*.c)
 
 PKGCONF ?= pkg-config
 
@@ -37,11 +41,11 @@ $(error "Cannot generate statically-linked binaries with this version of pkg-con
 endif
 endif
 
-build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
-	@$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
+build/$(APP)-shared: $(SRCS-y) $(INC_DIR) Makefile $(PC_FILE)  | build
+	@$(CC) $(CFLAGS) -I $(INC_DIR) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
-build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
-	@$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
+build/$(APP)-static: $(SRCS-y) $(INC_DIR) Makefile $(PC_FILE) | build
+	@$(CC) $(CFLAGS) -I $(INC_DIR) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
 build:
 	@mkdir -p $@
