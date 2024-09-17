@@ -146,7 +146,7 @@ static int vhost_send_pkt(void *arg)
 
 int main(int argc, char *argv[]) {
 
-	vhost_init(argc, argv);	
+	vhost_init(argc, argv);
 
     printf("\nStart Processing...\n\n");
 

@@ -1,3 +1,11 @@
+/**
+ * 程序功能概述：
+ * - 1个主控核心 + 2个工作核心
+ * - 主控核心实现环境初始化、内存分配等功能
+ * - 工作核心1 接收数据包，解析二层、三层首部字段，输出统计信息至log文件
+ * - 工作核心2 发送数据包，间隔1秒发送 "Hello World" 数据包至vhost端
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -80,7 +88,7 @@ static int process_pkt(__rte_unused void *arg)
             dst_ip = ipv4_hdr->dst_addr;
 			ip_len = ntohs(ipv4_hdr->total_length);
 
-			result.rx_bytes += (uint64_t)ip_len + 14;
+			result.rx_bytes += rte_pktmbuf_pkt_len(pkt);
 
 			if(same_mac(&dst_mac, &broadcast_mac)) {
 				data = (void *)(ipv4_hdr + 1);
@@ -106,6 +114,7 @@ static int process_pkt(__rte_unused void *arg)
         
 }
 
+// 间隔一秒向vhost发送hello world数据包
 static int send_pkt(void *arg)
 {
 	const struct rte_ether_addr src_mac = {
@@ -123,6 +132,7 @@ static int send_pkt(void *arg)
 		printf("Failed to allocate mbuf\n");
 		return -1;
 	}
+	printf("txmbuf pointer: 0x%lx\n", (uint64_t)(uintptr_t)pkt->buf_addr);
 
 	// Meta data 初始化
 	pkt->data_len = 14 + 20 + 15; // MAC + IPv4 + Message

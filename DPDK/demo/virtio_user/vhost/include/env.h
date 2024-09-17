@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "log.h"
 #include "type.h"
-#include "protocol.h"
 
 #define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 512

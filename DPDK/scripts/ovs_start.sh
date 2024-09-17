@@ -48,9 +48,9 @@ ovs-ctl --no-ovsdb-server --db-sock="$DB_SOCK" start
 # sudo ovs-vsctl del-br [bridge_name]
 # sudo ovs-vsctl list-br
 
-# sudo ovs-vsctl list-ports [bridge_name]
-# sudo ovs-vsctl add-port [bridge_name] [port_name]
-# sudo ovs-vsctl del-port [bridge_name] [port_name]
+# sudo ovs-vsctl list-ports br0
+# sudo ovs-vsctl add-port br0 [port_name]
+# sudo ovs-vsctl del-port br0 [port_name]
 
 # sudo ovs-vsctl add-port br0 port0 -- set Interface port0 type=dpdk \
 #     options:dpdk-devargs=0000:13:00.0 ofport_request=1
@@ -62,9 +62,17 @@ ovs-ctl --no-ovsdb-server --db-sock="$DB_SOCK" start
 
 
 # 流表相关操作, 参考ovs-ofctl, ovs-fields，ovs-actions手册
-# ovs-ofctl show br0
-# ovs-ofctl dump-flows br0
+# sudo ovs-ofctl show br0
+# sudo ovs-ofctl dump-flows br0
 # sudo ovs-ofctl add-flow br0 " \
 #     table=0, priority=1 \
 #     eth_dst=ff:ff:ff:ff:ff:ff, eth_type=0x0800, ip_dst=192.0.2.254 \
+#     actions=output:in_port"
+
+# sudo ovs-ofctl add-flow br0 " \
+#     table=0, priority=1, in_port=2 \
+#     actions=output:in_port"
+
+# sudo ovs-ofctl add-flow br0 " \
+#     table=0, priority=1, in_port=3 \
 #     actions=output:in_port"

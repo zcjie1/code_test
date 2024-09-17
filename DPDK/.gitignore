@@ -3,3 +3,6 @@ dpdk/
 .*
 Pktgen-DPDK/
 ovs/
+f-stack/
+UDPDK/
+dperf/
