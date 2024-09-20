@@ -16,6 +16,7 @@ ARG DEPENDENCIES="\
     pciutils \
     libarchive13 \
     iproute2 \
+    libbpf-dev \
 "
 
 RUN apt-get update && \

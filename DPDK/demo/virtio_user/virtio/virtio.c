@@ -132,7 +132,7 @@ static int send_pkt(void *arg)
 		printf("Failed to allocate mbuf\n");
 		return -1;
 	}
-	printf("txmbuf pointer: 0x%lx\n", (uint64_t)(uintptr_t)pkt->buf_addr);
+	// printf("txmbuf pointer: 0x%lx\n", (uint64_t)(uintptr_t)pkt->buf_addr);
 
 	// Meta data 初始化
 	pkt->data_len = 14 + 20 + 15; // MAC + IPv4 + Message

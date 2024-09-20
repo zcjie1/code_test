@@ -7,7 +7,7 @@
 host_app:
 	@sudo rm -rf /tmp/sock0
 	@sudo vhost/build/vhost \
-		-l 0-2 \
+		-l 0-2 -m 1024\
 		--vdev 'eth_vhost0,iface=/tmp/sock0' \
 		--file-prefix=host \
 		--log-level lib.eal:debug \
@@ -27,7 +27,7 @@ docker_app:
 		-v ./log/virtio_packet.log:/var/log/virtio_packet.log \
 		-v ./log/virtio_statistic.log:/var/log/virtio_statistic.log \
 		dpdk-virtio virtio-static \
-			-l 9-11 \
+			-l 9-11 -m 1024\
 			--no-pci \
 			--vdev=virtio_user0,path=/var/run/usvhost0,queue_size=1024 \
 			--file-prefix=container \

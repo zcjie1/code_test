@@ -119,9 +119,11 @@ static int vhost_send_pkt(void *arg)
 				break;
 			burst += ret;
 		}
-		if(!burst)
+		if(!burst) {
+			usleep(100);
 			continue;
-
+		}
+			
 		// 统计数据包信息
 		statistics.total_tx_num += burst;
 		for(int i = 0; i < burst; i++)
