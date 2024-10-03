@@ -2,10 +2,12 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 # binary name
-APP = server
+SERVER = server
+CLIENT = client
 
 # all source are stored in SRCS-y
 SRCS-y := server.c
+SRCS-z := client.c
 
 PKGCONF ?= pkg-config
 
@@ -14,12 +16,11 @@ ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
 $(error "no installation of DPDK found")
 endif
 
-all: shared
-.PHONY: shared static
-shared: build/$(APP)-shared
-	@ln -sf $(APP)-shared build/$(APP)
-static: build/$(APP)-static
-	@ln -sf $(APP)-static build/$(APP)
+.PHONY: server client
+server: build/$(SERVER)-static
+	@ln -sf $(SERVER)-static build/$(SERVER)
+client: build/$(CLIENT)-static
+	@ln -sf $(CLIENT)-static build/$(CLIENT)
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
@@ -37,16 +38,17 @@ $(error "Cannot generate statically-linked binaries with this version of pkg-con
 endif
 endif
 
-build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
+build/$(SERVER)-static: $(SRCS-y) Makefile $(PC_FILE) | build
 	@$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
-build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
-	@$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
+build/$(CLIENT)-static: $(SRCS-z) Makefile $(PC_FILE) | build
+	@$(CC) $(CFLAGS) $(SRCS-z) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
 build:
 	@mkdir -p $@
 
 .PHONY: clean
 clean:
-	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared
+	rm -f build/$(SERVER) build/$(SERVER)-static build/$(SERVER)-shared
+	rm -f build/$(CLIENT) build/$(CLIENT)-static build/$(CLIENT)-shared
 	test -d build && rmdir -p build || true

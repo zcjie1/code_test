@@ -33,6 +33,7 @@ struct walk_arg {
 	int fds[64];
 	int region_nr;
     struct memory_region regions[256];
+	void *data;
 };
 
 static int
@@ -137,6 +138,34 @@ int main(int argc, char *argv[])
     
     struct walk_arg wa;
     rte_memseg_walk_thread_unsafe(update_memory_region, &wa);
+
+	struct rte_mbuf *pkt = rte_pktmbuf_alloc(mbuf_pool);
+	const struct rte_ether_addr src_mac = {
+		.addr_bytes = { 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc }
+	};
+	const struct rte_ether_addr dst_mac = { 
+		.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } 
+	};
+	char sip[] = "192.0.2.1";
+	char dip[] = "192.0.2.254";
+
+	// Meta data 初始化
+	pkt->data_len = 14 + 20 + 15; // MAC + IPv4 + Message
+	pkt->data_off = RTE_PKTMBUF_HEADROOM;
+	pkt->pkt_len = 14 + 20 + 15;
+	pkt->nb_segs = 1;
+	// pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
+	pkt->l2_len	= sizeof(struct rte_ether_hdr);
+	pkt->l3_len	= sizeof(struct rte_ipv4_hdr);
+	pkt->next = NULL;
+
+	// 二层初始化
+	struct rte_ether_hdr *eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
+	rte_ether_addr_copy(&src_mac, &eth_hdr->src_addr);
+	rte_ether_addr_copy(&dst_mac, &eth_hdr->dst_addr);
+	eth_hdr->ether_type = ((uint16_t)0x0008);
+
+	wa.data = (void *)pkt;
 	
     int server_sock, client_sock;
     struct sockaddr_un server_addr, client_addr;
@@ -184,7 +213,7 @@ int main(int argc, char *argv[])
 	}
 
 	// 初始化iov结构
-	iov.iov_base = (uint8_t *)&wa;
+	iov.iov_base = (void *)&wa;
 	iov.iov_len = sizeof(wa);
 
 	// 初始化msghdr结构
@@ -200,6 +229,13 @@ int main(int argc, char *argv[])
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
 	memcpy(CMSG_DATA(cmsg), wa.fds, fd_size);
+	
+	printf("pkt addr: %lx\n", (uint64_t)pkt);
+	printf("region_nr: %d\n", wa.region_nr);
+	printf("wa_guest_phys_addr: %lx\n", wa.regions[0].guest_phys_addr);
+	printf("wa_userspace_addr: %lx\n", wa.regions[0].userspace_addr);
+	printf("wa_mmap_offset: %lu\n", wa.regions[0].mmap_offset);
+	printf("wa_memory_size: %lu\n", wa.regions[0].memory_size);
 
 	// 发送消息
 	if (sendmsg(client_sock, &msgh, MSG_CMSG_CLOEXEC) == -1)

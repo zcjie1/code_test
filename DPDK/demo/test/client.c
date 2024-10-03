@@ -12,6 +12,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <sys/mman.h>
+
+#include <rte_eal.h>
+#include <rte_ether.h>
+#include <rte_ethdev.h>
+#include <rte_dev.h>
+#include <rte_bus.h>
+#include <rte_cycles.h>
+#include <rte_lcore.h>
+#include <rte_mbuf.h>
+#include <rte_dev.h>
 
 #define SOCKET_PATH "/tmp/af_unix.socket"
 
@@ -26,7 +37,20 @@ struct walk_arg {
 	int fds[64];
 	int region_nr;
     struct memory_region regions[256];
+    void *data;
 };
+
+void show_packet(struct rte_ether_addr src_mac, 
+    struct rte_ether_addr dst_mac, uint16_t ether_type)
+{
+	char smac[RTE_ETHER_ADDR_FMT_SIZE];
+	char dmac[RTE_ETHER_ADDR_FMT_SIZE];
+
+	rte_ether_format_addr(smac, RTE_ETHER_ADDR_FMT_SIZE, &src_mac);
+	rte_ether_format_addr(dmac, RTE_ETHER_ADDR_FMT_SIZE, &dst_mac);
+    printf(" %x frame: [NULL | %s] => [NULL | %s]\n", ether_type, smac, dmac);
+    return;
+}
 
 int main() {
     int client_sock;
@@ -37,6 +61,8 @@ int main() {
     char control[CMSG_SPACE(32 * sizeof(int))];
     int fd_num;
     int fds[32];
+    void *map_addr[32];
+    int map_addr_num = 0;
     struct walk_arg wa;
     struct stat sb;
 
@@ -68,7 +94,7 @@ int main() {
 
     // 初始化iov结构
     iov.iov_base = &wa;
-    iov.iov_len = 1;
+    iov.iov_len = sizeof(wa);
 
     // 接收消息
     int ret = recvmsg(client_sock, &msgh, MSG_CMSG_CLOEXEC);
@@ -105,6 +131,30 @@ int main() {
             printf("    Time of last modification: %s", ctime(&sb.st_mtime));
             printf("    Time of last status change: %s\n", ctime(&sb.st_ctime));
         }
+        // close(fds[i]);
+        map_addr[i] = mmap(NULL, sb.st_size, (PROT_READ|PROT_WRITE), MAP_SHARED, fds[i], 0);
+        map_addr_num++;
+        printf("map_addr[%d] = %p\n", i, map_addr[i]);
+        printf("region_nr: %d\n", wa.region_nr);
+        printf("wa_guest_phys_addr: %lu\n", wa.regions[i].guest_phys_addr);
+        printf("wa_userspace_addr: %lu\n", wa.regions[i].userspace_addr);
+        printf("wa_mmap_offset: %lu\n", wa.regions[i].mmap_offset);
+        printf("wa_memory_size: %lu\n", wa.regions[i].memory_size);
+    }
+    
+    struct rte_ether_hdr *eth_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ether_addr src_mac, dst_mac;
+	uint16_t ether_type;
+    struct rte_mbuf *pkt = (struct rte_mbuf *)((uint64_t)wa.data - wa.regions[0].userspace_addr + (uint64_t)map_addr[0]);
+    pkt->buf_addr = (void*)((uint64_t)pkt->buf_addr - wa.regions[0].userspace_addr + (uint64_t)map_addr[0]);
+    eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
+    src_mac = eth_hdr->src_addr;
+    dst_mac = eth_hdr->dst_addr;
+    ether_type = eth_hdr->ether_type;
+    show_packet(src_mac, dst_mac, ether_type);
+
+    for(int i = 0; i < fd_num; i++) {
         close(fds[i]);
     }
 
