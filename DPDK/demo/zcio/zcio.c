@@ -6,6 +6,7 @@
  * - ...
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -14,6 +15,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
+#include <sys/un.h>
 
 #include <rte_eal.h>
 #include <rte_ether.h>
@@ -25,6 +27,9 @@
 #include <rte_mbuf.h>
 #include <rte_alarm.h>
 #include <rte_vhost.h>
+#include <asm-generic/fcntl.h>
+
+#define SOCKET_PATH "/tmp/zcio_unix.socket"
 
 #define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 512
@@ -34,17 +39,205 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
+bool force_quit = false;
+
 #define MAX_PHY_NIC_NUM 32
 struct {
-	int phy_nic_num;
-	uint16_t nic_id[MAX_PHY_NIC_NUM];
+	int phy_nic_num; // 物理网卡数量
+	uint16_t nic_id[MAX_PHY_NIC_NUM]; // 物理网卡 port_id
 }phy_nic;
 
-#define MAX_PHY_VHOST_NUM 128
-struct {
-	int vhost_nic_num;
-	uint16_t nic_id[MAX_PHY_VHOST_NUM];
-}vhost_nic;
+struct memory_region {
+	uint64_t host_phys_addr;
+	uint64_t memory_size;
+	uint64_t userspace_addr;
+	uint64_t mmap_offset;
+};
+
+#define MAX_FD_NUM 64
+#define MAX_REGION_NUM 256
+struct walk_arg {
+	int fds[MAX_FD_NUM];
+	int region_nr;
+    struct memory_region regions[MAX_REGION_NUM];
+};
+
+static int
+update_memory_region(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
+{
+	struct walk_arg *wa = arg;
+	struct memory_region *mr;
+	uint64_t start_addr, end_addr;
+	size_t offset;
+	int i, fd;
+
+	fd = rte_memseg_get_fd_thread_unsafe(ms);
+	if (fd < 0) {
+		printf("Failed to get fd, ms=%p rte_errno=%d",
+			ms, rte_errno);
+		return -1;
+	}
+
+	if (rte_memseg_get_fd_offset_thread_unsafe(ms, &offset) < 0) {
+		printf("Failed to get offset, ms=%p rte_errno=%d",
+			ms, rte_errno);
+		return -1;
+	}
+
+	start_addr = (uint64_t)(uintptr_t)ms->addr;
+	end_addr = start_addr + ms->len;
+
+	for (i = 0; i < wa->region_nr; i++) {
+		if (wa->fds[i] != fd)
+			continue;
+
+		mr = &wa->regions[i];
+
+		if (mr->userspace_addr + mr->memory_size < end_addr)
+			mr->memory_size = end_addr - mr->userspace_addr;
+
+		if (mr->userspace_addr > start_addr) {
+			mr->userspace_addr = start_addr;
+			mr->host_phys_addr = start_addr;
+		}
+
+		if (mr->mmap_offset > offset)
+			mr->mmap_offset = offset;
+
+		printf("index=%d fd=%d offset=0x%" PRIx64
+			" addr=0x%" PRIx64 " len=%" PRIu64"\n", i, fd,
+			mr->mmap_offset, mr->userspace_addr,
+			mr->memory_size);
+
+		return 0;
+	}
+
+	if (i >= 256) {
+		printf("Too many memory regions");
+		return -1;
+	}
+
+	mr = &wa->regions[i];
+	wa->fds[i] = fd;
+
+	mr->host_phys_addr = start_addr;
+	mr->userspace_addr = start_addr;
+	mr->memory_size = ms->len;
+	mr->mmap_offset = offset;
+
+	printf("index=%d fd=%d offset=0x%" PRIx64
+		" addr=0x%" PRIx64 " len=%" PRIu64 "\n", i, fd,
+		mr->mmap_offset, mr->userspace_addr,
+		mr->memory_size);
+
+	wa->region_nr++;
+
+	return 0;
+}
+
+static int memory_manager(void *arg __rte_unused)
+{
+	struct walk_arg wa;
+	rte_memseg_walk_thread_unsafe(update_memory_region, &wa);
+
+	int server_sock, client_sock;
+    struct sockaddr_un server_addr, client_addr;
+    socklen_t addrlen = sizeof(client_addr);
+    struct msghdr msgh;
+    struct iovec iov;
+    struct cmsghdr *cmsg;
+    size_t fd_size = wa.region_nr * sizeof(int);
+	char ctrl[CMSG_SPACE(fd_size)];
+	int ret;
+
+     // 创建 AF_UNIX 套接字
+    server_sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server_sock == -1) {
+        perror("Socket creation failed");
+        return -1;
+    }
+
+    // 清除旧的套接字文件
+    unlink(SOCKET_PATH);
+
+    // 设置服务器地址结构
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sun_family = AF_UNIX;
+    strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
+	
+	// 绑定套接字到地址
+	ret = bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    if (ret == -1) {
+        perror("Bind failed");
+        close(server_sock);
+        return -1;
+    }
+
+	// 将套接字设置为非阻塞模式
+    if (fcntl(server_sock, F_SETFL, O_NONBLOCK) == -1) {
+        perror("Set non-blocking mode failed");
+        close(server_sock);
+        return -1;
+    }
+
+	// 开始监听
+	ret = listen(server_sock, 8);
+    if (ret == -1) {
+        perror("Listen failed");
+        close(server_sock);
+        return -1;
+    }
+
+	// 初始化iov结构
+	iov.iov_base = (void *)&wa;
+	iov.iov_len = sizeof(wa);
+
+	// 初始化msghdr结构
+	memset(&msgh, 0, sizeof(msgh));
+	memset(ctrl, 0, sizeof(ctrl));
+	msgh.msg_iov = &iov;
+	msgh.msg_iovlen = 1;
+	msgh.msg_control = ctrl;
+	msgh.msg_controllen = sizeof(ctrl);
+
+	cmsg = CMSG_FIRSTHDR(&msgh);
+	cmsg->cmsg_len = CMSG_LEN(fd_size);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	memcpy(CMSG_DATA(cmsg), wa.fds, fd_size);
+
+	printf("HugePage region_nr: %d\n", wa.region_nr);
+	for (int i = 0; i < wa.region_nr; i++) {
+		printf("fd=%d\n", wa.fds[i]);
+		printf("	wa_host_phys_addr: %lx\n", wa.regions[i].host_phys_addr);
+		printf("	wa_userspace_addr: %lx\n", wa.regions[i].userspace_addr);
+		printf("	wa_mmap_offset: %lu\n", wa.regions[i].mmap_offset);
+		printf("	wa_memory_size: %lu\n", wa.regions[i].memory_size);
+ 	}
+	
+	while(!force_quit) {
+		// 接受客户端连接
+		client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &addrlen);
+		if (client_sock == -1) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+                usleep(100);
+            else
+                perror("Accept failed");
+			continue;
+		}
+
+		// 发送消息
+		ret = sendmsg(client_sock, &msgh, MSG_CMSG_CLOEXEC);
+		while(ret == -1 && !force_quit) {
+			perror("Sendmsg failed");
+			usleep(1000);
+			ret = sendmsg(client_sock, &msgh, MSG_CMSG_CLOEXEC);
+		}
+		
+		close(client_sock);
+	}
+}
 
 // 网卡初始化
 static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
@@ -140,13 +333,18 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     printf("    Device Name: %s\n", device_name);
     printf("    Driver Name: %s\n\n", dev_info.driver_name);
 
-	// 统计vhost网卡和普通物理网关数量
-    if(strcmp(dev_info.driver_name, "net_vhost") == 0) {
-		vhost_nic.nic_id[vhost_nic.vhost_nic_num] = port;
-		vhost_nic.vhost_nic_num++;
-	}else {
-		phy_nic.nic_id[phy_nic.phy_nic_num] = port;
-		phy_nic.phy_nic_num++;
+	// 统计普通物理网卡数量
+	phy_nic.nic_id[phy_nic.phy_nic_num] = port;
+	phy_nic.phy_nic_num++;
+}
+
+// 信号处理函数
+static void signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\n\nSignal %d received, preparing to exit...\n",
+				signum);
+		force_quit = true;
 	}
 }
 
@@ -157,9 +355,10 @@ int main(int argc, char *argv[])
 	unsigned int nb_lcores;
 	uint16_t portid;
 	unsigned int worker_id;
-
-	uint16_t recv_port = 0;
-	uint16_t send_port = 1;
+	
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
     // eal环境初始化
 	int ret = rte_eal_init(argc, argv);
@@ -192,7 +391,7 @@ int main(int argc, char *argv[])
 	
 	// 分配工作核心任务
 	worker_id = rte_get_next_lcore(-1, 1, 0);
-	rte_eal_remote_launch(recv_pkt, &recv_port, worker_id);
+	rte_eal_remote_launch(memory_manager, NULL, worker_id);
 
 	// 等待工作核心结束任务
 	rte_eal_mp_wait_lcore();
