@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <sys/un.h>
+#include <sys/fcntl.h>
 
 #include <rte_eal.h>
 #include <rte_ether.h>
@@ -27,9 +28,8 @@
 #include <rte_mbuf.h>
 #include <rte_alarm.h>
 #include <rte_vhost.h>
-#include <asm-generic/fcntl.h>
 
-#define SOCKET_PATH "/tmp/zcio_unix.socket"
+#define MEMCTL_PATH "/tmp/memctl.sock"
 
 #define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 512
@@ -48,17 +48,16 @@ struct {
 }phy_nic;
 
 struct memory_region {
-	uint64_t host_phys_addr;
+	uint64_t host_start_addr;
 	uint64_t memory_size;
-	uint64_t userspace_addr;
 	uint64_t mmap_offset;
 };
 
 #define MAX_FD_NUM 64
-#define MAX_REGION_NUM 256
+#define MAX_REGION_NUM 64
 struct walk_arg {
-	int fds[MAX_FD_NUM];
 	int region_nr;
+	int fds[MAX_FD_NUM];
     struct memory_region regions[MAX_REGION_NUM];
 };
 
@@ -94,12 +93,11 @@ update_memory_region(const struct rte_memseg_list *msl __rte_unused,
 
 		mr = &wa->regions[i];
 
-		if (mr->userspace_addr + mr->memory_size < end_addr)
-			mr->memory_size = end_addr - mr->userspace_addr;
+		if (mr->host_start_addr + mr->memory_size < end_addr)
+			mr->memory_size = end_addr - mr->host_start_addr;
 
-		if (mr->userspace_addr > start_addr) {
-			mr->userspace_addr = start_addr;
-			mr->host_phys_addr = start_addr;
+		if (mr->host_start_addr > start_addr) {
+			mr->host_start_addr = start_addr;
 		}
 
 		if (mr->mmap_offset > offset)
@@ -107,7 +105,7 @@ update_memory_region(const struct rte_memseg_list *msl __rte_unused,
 
 		printf("index=%d fd=%d offset=0x%" PRIx64
 			" addr=0x%" PRIx64 " len=%" PRIu64"\n", i, fd,
-			mr->mmap_offset, mr->userspace_addr,
+			mr->mmap_offset, mr->host_start_addr,
 			mr->memory_size);
 
 		return 0;
@@ -121,14 +119,13 @@ update_memory_region(const struct rte_memseg_list *msl __rte_unused,
 	mr = &wa->regions[i];
 	wa->fds[i] = fd;
 
-	mr->host_phys_addr = start_addr;
-	mr->userspace_addr = start_addr;
+	mr->host_start_addr = start_addr;
 	mr->memory_size = ms->len;
 	mr->mmap_offset = offset;
 
 	printf("index=%d fd=%d offset=0x%" PRIx64
 		" addr=0x%" PRIx64 " len=%" PRIu64 "\n", i, fd,
-		mr->mmap_offset, mr->userspace_addr,
+		mr->mmap_offset, mr->host_start_addr,
 		mr->memory_size);
 
 	wa->region_nr++;
@@ -159,12 +156,12 @@ static int memory_manager(void *arg __rte_unused)
     }
 
     // 清除旧的套接字文件
-    unlink(SOCKET_PATH);
+    unlink(MEMCTL_PATH);
 
     // 设置服务器地址结构
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
-    strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
+    strncpy(server_addr.sun_path, MEMCTL_PATH, sizeof(server_addr.sun_path) - 1);
 	
 	// 绑定套接字到地址
 	ret = bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -210,10 +207,9 @@ static int memory_manager(void *arg __rte_unused)
 	printf("HugePage region_nr: %d\n", wa.region_nr);
 	for (int i = 0; i < wa.region_nr; i++) {
 		printf("fd=%d\n", wa.fds[i]);
-		printf("	wa_host_phys_addr: %lx\n", wa.regions[i].host_phys_addr);
-		printf("	wa_userspace_addr: %lx\n", wa.regions[i].userspace_addr);
-		printf("	wa_mmap_offset: %lu\n", wa.regions[i].mmap_offset);
+		printf("	wa_host_phys_addr: %lx\n", wa.regions[i].host_start_addr);
 		printf("	wa_memory_size: %lu\n", wa.regions[i].memory_size);
+		printf("	wa_mmap_offset: %lu\n", wa.regions[i].mmap_offset);
  	}
 	
 	while(!force_quit) {
@@ -237,6 +233,7 @@ static int memory_manager(void *arg __rte_unused)
 		
 		close(client_sock);
 	}
+	close(server_sock);
 }
 
 // 网卡初始化
@@ -355,10 +352,8 @@ int main(int argc, char *argv[])
 	unsigned int nb_lcores;
 	uint16_t portid;
 	unsigned int worker_id;
-	
+
 	force_quit = false;
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
 
     // eal环境初始化
 	int ret = rte_eal_init(argc, argv);
@@ -381,17 +376,21 @@ int main(int argc, char *argv[])
 		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
-
-    // 初始化网卡
-	RTE_ETH_FOREACH_DEV(portid)
-		if (port_init(portid, mbuf_pool) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16 "\n", portid);
-
-	printf("\nStart Processing...\n\n");
 	
 	// 分配工作核心任务
 	worker_id = rte_get_next_lcore(-1, 1, 0);
 	rte_eal_remote_launch(memory_manager, NULL, worker_id);
+
+    // 初始化网卡
+	RTE_ETH_FOREACH_DEV(portid)
+		port_init(portid, mbuf_pool);
+		// if (port_init(portid, mbuf_pool) != 0)
+		// 	rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16 "\n", portid);
+
+	printf("\nStart Processing...\n\n");
+	
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	// 等待工作核心结束任务
 	rte_eal_mp_wait_lcore();
