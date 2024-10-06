@@ -7,7 +7,7 @@ host_app:
 	@sudo rm -rf /tmp/memctl.sock
 	@sudo rm -f /dev/hugepages/*
 	@sudo zcio_host/build/zcio_host \
-		-l 0-1 -m 1024\
+		-l 0-1 -m 4096\
 		--vdev=eth_zcio0,server=1,server-iface=/tmp/zcio_server0 \
 		--file-prefix=host \
 
@@ -24,7 +24,9 @@ docker_app:
 			--vdev=eth_zcio1,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
 			--file-prefix=container \
 
-custom_dpdk:
+all: dpdk_install dpdk_tar zcio_host zcio_docker_test zcio_docker_image
+
+dpdk_tar:
 	cd /home/zcj && \
 	tar -cvf $(SELF_PATH)/custom_dpdk.tar --exclude=dpdk-custom/build dpdk-custom
 

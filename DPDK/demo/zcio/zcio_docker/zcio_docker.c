@@ -87,55 +87,55 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (retval < 0)
 		return retval;
 
-	// 设置每个ring的描述符数量
-	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
-	if (retval < 0)
-		return retval;
+	// // 设置每个ring的描述符数量
+	// retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
+	// if (retval < 0)
+	// 	return retval;
 
-	// 设置每个receive ring对应的内存池
-	int port_socket = rte_eth_dev_socket_id(port);
-	rxconf = dev_info.default_rxconf;
-	rxconf.offloads = port_conf.rxmode.offloads;
-	for (int r = 0; r < RX_RING_NUM; r++) {
-		retval = rte_eth_rx_queue_setup(port, r, nb_rxd,
-				port_socket, &rxconf, mbuf_pool);
-		if (retval < 0)
-			return retval;
-	}
+	// // 设置每个receive ring对应的内存池
+	// int port_socket = rte_eth_dev_socket_id(port);
+	// rxconf = dev_info.default_rxconf;
+	// rxconf.offloads = port_conf.rxmode.offloads;
+	// for (int r = 0; r < RX_RING_NUM; r++) {
+	// 	retval = rte_eth_rx_queue_setup(port, r, nb_rxd,
+	// 			port_socket, &rxconf, mbuf_pool);
+	// 	if (retval < 0)
+	// 		return retval;
+	// }
 
-	// 配置发送队列
-	txconf = dev_info.default_txconf;
-	txconf.offloads = port_conf.txmode.offloads;
-	for (int r = 0; r < TX_RING_NUM; r++) {
-		retval = rte_eth_tx_queue_setup(port, r, nb_txd,
-				port_socket, &txconf);
-		if (retval < 0)
-			return retval;
-	}
+	// // 配置发送队列
+	// txconf = dev_info.default_txconf;
+	// txconf.offloads = port_conf.txmode.offloads;
+	// for (int r = 0; r < TX_RING_NUM; r++) {
+	// 	retval = rte_eth_tx_queue_setup(port, r, nb_txd,
+	// 			port_socket, &txconf);
+	// 	if (retval < 0)
+	// 		return retval;
+	// }
 
-	retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
-	if (retval < 0)
-		printf("Port %u, Failed to disable Ptype parsing\n", port);
+	// retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
+	// if (retval < 0)
+	// 	printf("Port %u, Failed to disable Ptype parsing\n", port);
 
 	// 启动网卡
 	retval = rte_eth_dev_start(port);
 	if (retval < 0)
 		return retval;
 	
-	retval = rte_eth_promiscuous_enable(port);
-	if (retval < 0)
-		return retval;
+	// retval = rte_eth_promiscuous_enable(port);
+	// if (retval < 0)
+	// 	return retval;
 
 	// 输出网卡信息
-	struct rte_ether_addr addr;
-	retval = rte_eth_macaddr_get(port, &addr);
-	if (retval < 0)
-		return retval;
+	// struct rte_ether_addr addr;
+	// retval = rte_eth_macaddr_get(port, &addr);
+	// if (retval < 0)
+	// 	return retval;
 
-	printf("Port %u: \n", port);
-    printf("    MAC: %02"PRIx8 ":" "%02"PRIx8 ":" "%02"PRIx8 ":"
-			   "%02"PRIx8 ":" "%02"PRIx8 ":" "%02"PRIx8 "\n",
-			RTE_ETHER_ADDR_BYTES(&addr));
+	// printf("Port %u: \n", port);
+    // printf("    MAC: %02"PRIx8 ":" "%02"PRIx8 ":" "%02"PRIx8 ":"
+	// 		   "%02"PRIx8 ":" "%02"PRIx8 ":" "%02"PRIx8 "\n",
+	// 		RTE_ETHER_ADDR_BYTES(&addr));
     
     rte_eth_dev_get_name_by_port(port, device_name);
     printf("    Device Name: %s\n", device_name);
@@ -153,6 +153,13 @@ static void signal_handler(int signum)
 		printf("\n\nSignal %d received, preparing to exit...\n",
 				signum);
 		force_quit = true;
+	}
+}
+
+static int memory_manager(void *arg __rte_unused)
+{	
+	while(!force_quit) {
+		usleep(10000);
 	}
 }
 
@@ -192,14 +199,13 @@ int main(int argc, char *argv[])
 
     // 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid)
-		if (port_init(portid, mbuf_pool) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16 "\n", portid);
+		port_init(portid, mbuf_pool);
 
 	printf("\nStart Processing...\n\n");
 	
 	// 分配工作核心任务
-	// worker_id = rte_get_next_lcore(-1, 1, 0);
-	// rte_eal_remote_launch(memory_manager, NULL, worker_id);
+	worker_id = rte_get_next_lcore(-1, 1, 0);
+	rte_eal_remote_launch(memory_manager, NULL, worker_id);
 
 	// 等待工作核心结束任务
 	rte_eal_mp_wait_lcore();
