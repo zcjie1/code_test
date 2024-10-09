@@ -1,13 +1,18 @@
-.PHONY: custom_dpdk zcio_host zcio_docker zcio_docker_image host_app docker_app
+.PHONY: clean custom_dpdk zcio_host zcio_docker zcio_docker_image host_app docker_app
 
 SELF_PATH = /home/zcj/code_test/DPDK/demo/zcio/zcio_docker
+
+clean:
+	@sudo rm -rf /tmp/zcio_server0
+	@sudo rm -rf /tmp/memctl.sock
+	@sudo rm -f /dev/hugepages/*
 
 host_app:
 	@sudo rm -rf /tmp/zcio_server0
 	@sudo rm -rf /tmp/memctl.sock
 	@sudo rm -f /dev/hugepages/*
 	@sudo zcio_host/build/zcio_host \
-		-l 0-1 -m 4096\
+		-l 0-3 -m 1024\
 		--vdev=eth_zcio0,server=1,server-iface=/tmp/zcio_server0 \
 		--file-prefix=host \
 
@@ -19,7 +24,7 @@ docker_app:
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
 		zcio_docker zcio_docker \
-			-l 2-3 -m 1024\
+			-l 4-7 -m 1024\
 			--no-pci \
 			--vdev=eth_zcio1,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
 			--file-prefix=container \

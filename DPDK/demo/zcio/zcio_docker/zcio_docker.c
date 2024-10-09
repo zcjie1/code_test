@@ -173,6 +173,8 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		zcio_nic.portid[zcio_nic.nic_num] = port;
 		zcio_nic.nic_num++;
 	}
+	
+	return 0;
 }
 
 // 信号处理函数
@@ -204,8 +206,8 @@ static void parse_pkt(struct rte_mbuf *pkt)
 		RTE_ETHER_ADDR_BYTES(&dst_mac));
 	printf("ether type %04"PRIx16 "\n", ether_type);
 	printf("raw data %016"PRIx64 "\n", raw_data);
-	printf("data %016"PRIx64 "\n", data);
-	printf("--------------------------------------------------------------\n");
+	printf("data %016"PRIu64 "\n", data);
+	printf("--------------------------------------------------------------\n\n");
 	*data_ptr = rte_cpu_to_be_64(data+1);
 }
 
@@ -224,8 +226,11 @@ static int client_test(void *arg __rte_unused)
 		if(ret) {
 			parse_pkt(recv);
 			ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);
-			while(!ret && !force_quit)
+			while(!ret && !force_quit) {
 				ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);
+				printf("retry to tx_burst\n");
+				sleep(1);
+			}
 			continue;
 		}
 		usleep(1);
@@ -269,7 +274,7 @@ int main(int argc, char *argv[])
 	RTE_ETH_FOREACH_DEV(portid)
 		if (port_init(portid, mbuf_pool) != 0) {
 			force_quit = true;
-			printf("\nCannot init port %"PRIu16"\n", portid);
+			printf("\nError: Fail to init port %"PRIu16"\n", portid);
 			goto out;
 		}
 
