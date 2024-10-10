@@ -50,6 +50,7 @@ struct nic_info{
 
 static struct nic_info phy_nic;
 static struct nic_info zcio_nic;
+static struct rte_mempool *mbuf_pool;
 
 struct memory_region {
 	uint64_t host_start_addr;
@@ -434,43 +435,51 @@ static void parse_pkt(struct rte_mbuf *pkt)
 	printf("raw data %016"PRIx64 "\n", raw_data);
 	printf("data %016"PRIu64 "\n", data);
 	printf("--------------------------------------------------------------\n\n");
-	*data_ptr = rte_cpu_to_be_64(data+1);
+}
+
+static void loop_tx(uint16_t port, struct rte_mbuf **pkt, uint16_t num)
+{
+	int ret;
+	ret = rte_eth_tx_burst(port, 0, pkt, num);
+	while(!ret && !force_quit) {
+		ret = rte_eth_tx_burst(port, 0, pkt, num);
+		printf("Port%u: retry to tx_burst\n", port);
+		sleep(5);
+	}
+}
+
+static void loop_rx(uint16_t port, struct rte_mbuf **pkt, uint16_t num)
+{
+	int ret;
+	ret = rte_eth_rx_burst(port, 0, pkt, num);
+	while(!ret && !force_quit) {
+		ret = rte_eth_rx_burst(port, 0, pkt, num);
+		// printf("Port%u: retry to rx_burst\n", port);
+		usleep(100);
+	}
 }
 
 static int server_test(void *arg)
 {
-	struct rte_mempool *mbuf_pool = arg;
-	if(zcio_nic.nic_num != 1) {
-		printf("Error: The number of zcio nic is not 1\n");
-		return -1;
-	}
+	uint16_t *portid = (uint16_t *)arg;
 	
 	int ret = 0;
 	struct rte_mbuf *pkt = generate_testpkt(mbuf_pool);
-	ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &pkt, 1);
-	while(!ret && !force_quit) {
-		ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &pkt, 1);
-		printf("retry to tx_burst\n");
-		sleep(5);
-	}
+	loop_tx(portid[0], &pkt, 1);
 		
-	
 	struct rte_mbuf *recv;
 	
 	while(!force_quit) {
-		ret = rte_eth_rx_burst(zcio_nic.portid[0], 0, &recv, 1);
-		if(ret) {
-			parse_pkt(recv);
-			sleep(1);
-			ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);
-			while(!ret && !force_quit) {
-				ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);
-				printf("retry to tx_burst\n");
-				sleep(5);
-			}
-			continue;
-		}
-		usleep(100);
+		loop_rx(portid[0], &recv, 1);
+		parse_pkt(recv);
+		loop_tx(portid[1], &recv, 1);
+		// printf("mark1\n");
+		loop_rx(portid[1], &recv, 1);
+		// printf("mark2\n");
+		parse_pkt(recv);
+		// printf("mark3\n");
+		loop_tx(portid[0], &recv, 1);
+		sleep(2);
 	}
 	
 	rte_pktmbuf_free(pkt);
@@ -479,7 +488,6 @@ static int server_test(void *arg)
 
 int main(int argc, char *argv[])
 {
-	struct rte_mempool *mbuf_pool;
 	unsigned int nb_ports;
 	unsigned int nb_lcores;
 	uint16_t portid;
@@ -494,13 +502,13 @@ int main(int argc, char *argv[])
 
 	// 工作核心数量
 	nb_lcores = rte_lcore_count();
-	if (nb_lcores < 1)
+	if (nb_lcores < 3)
 		rte_exit(EXIT_FAILURE, "Error: The number of work cores is insufficient\n");
 
     // 网卡数量
 	nb_ports = rte_eth_dev_count_avail();
 	printf("ports number: %u\n", nb_ports);
-	if (nb_ports < 1 )
+	if (nb_ports < 2)
 		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
 
     // 分配内存池
@@ -523,9 +531,12 @@ int main(int argc, char *argv[])
 		
 	printf("\nStart Processing...\n\n");
 
+	if(zcio_nic.nic_num < 2)
+		rte_exit(EXIT_FAILURE, "Error: The number of zcio nic is not enough\n");
+
 	// 分配工作核心任务
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(server_test, mbuf_pool, worker_id);
+	rte_eal_remote_launch(server_test, zcio_nic.portid, worker_id);
 	
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
