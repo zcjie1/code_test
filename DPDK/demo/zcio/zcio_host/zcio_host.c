@@ -451,7 +451,7 @@ static int server_test(void *arg)
 	while(!ret && !force_quit) {
 		ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &pkt, 1);
 		printf("retry to tx_burst\n");
-		sleep(1);
+		sleep(5);
 	}
 		
 	

@@ -229,7 +229,7 @@ static int client_test(void *arg __rte_unused)
 			while(!ret && !force_quit) {
 				ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);
 				printf("retry to tx_burst\n");
-				sleep(1);
+				sleep(5);
 			}
 			continue;
 		}
