@@ -39,6 +39,8 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
+#define FREE_NUM(x) ((x > 32768) ? 0 : (x + 32767))
+
 bool force_quit = false;
 static uint64_t pkt_num = 0;
 
@@ -187,8 +189,9 @@ static void signal_handler(int signum)
 	}
 }
 
-static void parse_pkt(struct rte_mbuf *pkt)
+static struct rte_mbuf* parse_pkt(struct rte_mbuf *pkt)
 {
+	int ret = 0;
 	struct rte_ether_addr src_mac, dst_mac;
 	uint16_t ether_type;
 	
@@ -208,7 +211,32 @@ static void parse_pkt(struct rte_mbuf *pkt)
 	printf("raw data %016"PRIx64 "\n", raw_data);
 	printf("data %016"PRIu64 "\n", data);
 	printf("--------------------------------------------------------------\n\n");
-	*data_ptr = rte_cpu_to_be_64(data+1);
+
+	// 释放 pkt
+	pkt->dynfield1[0] = 114514;
+	ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &pkt, 1);
+	while(ret == 0) {
+		printf("retry to free recv pkt\n");
+		ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &pkt, 1);
+		usleep(10);
+	}
+	
+	// 重新分配
+	ret = rte_eth_rx_burst(zcio_nic.portid[0], 0, &pkt, FREE_NUM(1));
+	while(ret == 0) {
+		printf("retry to refill pkt\n");
+		ret = rte_eth_rx_burst(zcio_nic.portid[0], 0, &pkt, FREE_NUM(1));
+	}
+	
+	eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr*);
+	eth_hdr->src_addr = src_mac;
+	eth_hdr->dst_addr = dst_mac;
+	eth_hdr->ether_type = ether_type;
+	data_ptr = (uint64_t *)(eth_hdr + 1);
+	data = data + 1;
+	*data_ptr = rte_cpu_to_be_64(data);
+
+	return pkt;
 }
 
 static int client_test(void *arg __rte_unused)
@@ -224,7 +252,7 @@ static int client_test(void *arg __rte_unused)
 	while(!force_quit) {
 		ret = rte_eth_rx_burst(zcio_nic.portid[0], 0, &recv, 1);
 		if(ret) {
-			parse_pkt(recv);
+			recv = parse_pkt(recv);
 			ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);
 			while(!ret && !force_quit) {
 				ret = rte_eth_tx_burst(zcio_nic.portid[0], 0, &recv, 1);

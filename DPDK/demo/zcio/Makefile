@@ -38,7 +38,7 @@ docker_app2:
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
 		zcio_docker zcio_docker \
-			-l 4-7 -m 1024\
+			-l 8-11 -m 1024\
 			--no-pci \
 			--vdev=eth_zcio0,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
 			--file-prefix=container2 \

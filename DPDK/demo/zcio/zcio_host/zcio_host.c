@@ -465,21 +465,14 @@ static int server_test(void *arg)
 	
 	int ret = 0;
 	struct rte_mbuf *pkt = generate_testpkt(mbuf_pool);
-	loop_tx(portid[0], &pkt, 1);
-		
-	struct rte_mbuf *recv;
-	
 	while(!force_quit) {
-		loop_rx(portid[0], &recv, 1);
-		parse_pkt(recv);
-		loop_tx(portid[1], &recv, 1);
-		// printf("mark1\n");
-		loop_rx(portid[1], &recv, 1);
-		// printf("mark2\n");
-		parse_pkt(recv);
-		// printf("mark3\n");
-		loop_tx(portid[0], &recv, 1);
-		sleep(2);
+		loop_tx(portid[0], &pkt, 1);
+		loop_rx(portid[0], &pkt, 1);
+		parse_pkt(pkt);
+		loop_tx(portid[1], &pkt, 1);
+		loop_rx(portid[1], &pkt, 1);
+		parse_pkt(pkt);
+		usleep(1000);
 	}
 	
 	rte_pktmbuf_free(pkt);
