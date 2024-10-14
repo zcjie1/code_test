@@ -1,8 +1,8 @@
 #include "env.h"
 
-struct nic phy_nic;
-struct nic zcio_nic;
-struct route_table rtable;
+extern struct nic phy_nic;
+extern struct nic zcio_nic;
+extern struct route_table rtable;
 
 // zcio网卡IP地址分配
 char *zcio_ip_list[] = {
@@ -106,12 +106,12 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 		
-	retval = rte_eth_promiscuous_enable(port);
-	if (retval < 0) {
-		printf("Cannot enable promiscuous mode: err=%d, port=%u\n",
-				retval, port);
-		return retval;
-	}
+	// retval = rte_eth_promiscuous_enable(port);
+	// if (retval < 0) {
+	// 	printf("Cannot enable promiscuous mode: err=%d, port=%u\n",
+	// 			retval, port);
+	// 	return retval;
+	// }
 		
 	// 输出网卡信息
 	struct rte_ether_addr addr;
@@ -169,17 +169,21 @@ void route_table_init(void)
 	uint16_t portid;
 
 	/* 初始化路由表 */
-
-	for(int i = 0; i < zcio_nic.nic_num; i++) {
+	entry = &rtable.entry[rtable.entry_num];
+	entry->ipaddr = phy_nic.info[0].ipaddr;
+	entry->info = &zcio_nic.info[0];
+	rtable.entry_num++;
+	
+	for(int i = 0; i < zcio_nic.nic_num - 1; i++) {
 		entry = &rtable.entry[rtable.entry_num];
 		entry->ipaddr = zcio_nic.info[i].ipaddr;
-		entry->portid = zcio_nic.info[i].portid;
+		entry->info = &zcio_nic.info[i+1];
 		rtable.entry_num++;
 	}
 	
-	// 若目标IP地址为0.0.0.0，转发至物理网卡，发出
+	// 转发至物理网卡，发出
 	entry = &rtable.entry[rtable.entry_num];
-	entry->ipaddr = phy_nic.info[0].ipaddr;
-	entry->portid = phy_nic.info[0].portid;
+	entry->ipaddr = zcio_nic.info[3].ipaddr;
+	entry->info = &phy_nic.info[0];
 	rtable.entry_num++;
 }

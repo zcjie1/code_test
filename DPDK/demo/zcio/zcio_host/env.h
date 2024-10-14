@@ -28,8 +28,8 @@ struct nic{
 };
 
 struct route_entry {
-	uint32_t ipaddr; // 大端序IP地址
-	uint16_t portid;
+	uint32_t ipaddr; // 大端序IP地址, 数据包的原dst地址
+	struct nic_info *info; // 下一跳的端口信息
 };
 
 struct route_table {

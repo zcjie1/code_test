@@ -7,22 +7,20 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-
 #include <rte_dev.h>
 #include <rte_bus.h>
 #include <rte_cycles.h>
 #include <rte_lcore.h>
 #include <rte_alarm.h>
-#include <rte_vhost.h>
 
 #include "memctl.h"
 #include "env.h"
 #include "process.h"
 
 bool force_quit = false;
-extern struct nic phy_nic;
-extern struct nic zcio_nic;
-extern struct route_table rtable;
+struct nic phy_nic;
+struct nic zcio_nic;
+struct route_table rtable;
 
 struct rte_mempool *mbuf_pool;
 struct rte_ring *route_ring;
@@ -176,7 +174,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 	
-	route_ring = rte_ring_create("route_ring", 4096, rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
+	// route_ring = rte_ring_create("route_ring", 4096, rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
 	route_table_init();
 		
 	printf("\nStart Processing...\n\n");
@@ -185,8 +183,8 @@ int main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error: The number of zcio nic is not enough\n");
 
 	// 分配工作核心任务
-	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(route_process, (void *)&rtable, worker_id);
+	// worker_id = rte_get_next_lcore(worker_id, 1, 0);
+	// rte_eal_remote_launch(route_process, NULL, worker_id);
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
 	rte_eal_remote_launch(phy_nic_receive, NULL, worker_id);
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);

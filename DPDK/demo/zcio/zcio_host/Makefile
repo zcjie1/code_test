@@ -5,7 +5,7 @@
 APP = zcio_host
 
 # all source are stored in SRCS-y
-SRCS-y := zcio_host.c
+SRCS-y := zcio_host.c env.c memctl.c process.c
 
 PKGCONF ?= pkg-config
 

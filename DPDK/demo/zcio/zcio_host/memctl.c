@@ -2,6 +2,7 @@
 #include <sys/un.h>
 #include <sys/fcntl.h>
 #include <rte_errno.h>
+#include <unistd.h>
 #include "memctl.h"
 
 extern bool force_quit;

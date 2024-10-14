@@ -62,7 +62,7 @@ zcio_docker_test:
 zcio_docker_image:
 	cd zcio_docker && \
 	docker build -t zcio_docker . && \
-	docker image prune
+	docker image prune -f
 
 dpdk_install:
 	cd /home/zcj/dpdk-custom && \

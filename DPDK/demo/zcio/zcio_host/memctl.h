@@ -20,6 +20,6 @@ struct walk_arg {
     struct memory_region regions[MAX_REGION_NUM];
 };
 
-static int memory_manager(void *arg __rte_unused);
+int memory_manager(void *arg __rte_unused);
 
 #endif // !__MEMCTL_H__
