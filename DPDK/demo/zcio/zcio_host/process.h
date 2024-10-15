@@ -26,7 +26,7 @@ struct arphdr {
 #define mbuf_udp_hdr(m) \
     rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr*, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr))
 
-#define MAX_BURST_NUM 32
+#define MAX_BURST_NUM 64
 
 // int route_process(void *arg __rte_unused);
 int phy_nic_receive(void *arg __rte_unused);

@@ -1,74 +1,115 @@
-.PHONY: clean custom_dpdk zcio_host zcio_docker zcio_docker_image host_app docker_app1 docker_app2
+.PHONY: clean dpdk zcio dpdk_install dpdk_env_image dpdk_base_image zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
-SELF_PATH = /home/zcj/code_test/DPDK/demo/zcio/zcio_docker
+DPDK_ENV_PATH = /home/zcj/code_test/DPDK/demo/dpdk_env/
+DPDK_BASE_PATH = /home/zcj/code_test/DPDK/demo/dpdk_base/
 
-clean:
-	@sudo rm -rf /tmp/zcio_server0
-	@sudo rm -rf /tmp/memctl.sock
-	@sudo rm -f /dev/hugepages/*
+all: dpdk zcio
+dpdk: dpdk_install dpdk_env_image dpdk_base_image
+zcio: zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
-host_app:
-	@sudo rm -rf /tmp/zcio_server*
-	@sudo rm -rf /tmp/memctl.sock
-	@sudo rm -f /dev/hugepages/*
+host_app: clean
 	@sudo zcio_host/build/zcio_host \
-		-l 0-3 -m 1024\
+		-l 0-11 -m 4096\
 		--vdev=eth_zcio0,server=1,server-iface=/tmp/zcio_server0 \
 		--vdev=eth_zcio1,server=1,server-iface=/tmp/zcio_server1 \
+		--vdev=eth_zcio2,server=1,server-iface=/tmp/zcio_server2 \
 		--file-prefix=host \
 
-docker_app1:
+zcio_ipfilter_docker:
 	@docker run \
 		-it --rm  \
 		--privileged \
 		-v /tmp/zcio_server0:/var/run/zcio_server0 \
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
-		zcio_docker zcio_docker \
-			-l 4-7 -m 1024\
+		zcio_ipfilter zcio_ipfilter\ \
+			-l 12-13 -m 1024\
 			--no-pci \
 			--vdev=eth_zcio0,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
-			--file-prefix=container1 \
+			--file-prefix=zcio_ipfilter \
 
-docker_app2:
+zcio_log_docker:
 	@docker run \
 		-it --rm  \
 		--privileged \
 		-v /tmp/zcio_server1:/var/run/zcio_server0 \
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
-		zcio_docker zcio_docker \
-			-l 8-11 -m 1024\
+		zcio_log zcio_log \
+			-l 14-15 -m 1024\
 			--no-pci \
 			--vdev=eth_zcio0,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
-			--file-prefix=container2 \
+			--file-prefix=zcio_log \
 
-all: dpdk_install dpdk_tar zcio_host zcio_docker_test zcio_docker_image
-
-dpdk_tar:
-	cd /home/zcj && \
-	tar -cvf $(SELF_PATH)/custom_dpdk.tar --exclude=dpdk-custom/build dpdk-custom
-
-zcio_host:
-	cd zcio_host && \
-	make clean && \
-	make static
-
-zcio_docker_test:
-	cd zcio_docker && \
-	make clean && \
-	make static
-
-zcio_docker_image:
-	cd zcio_docker && \
-	docker build -t zcio_docker . && \
-	docker image prune -f
+zcio_reply_docker:
+	@docker run \
+		-it --rm  \
+		--privileged \
+		-v /tmp/zcio_server2:/var/run/zcio_server0 \
+		-v /tmp/memctl.sock:/var/run/memctl.sock \
+		-v /dev/hugepages:/dev/hugepages \
+		zcio_reply zcio_reply \
+			-l 16-17 -m 1024\
+			--no-pci \
+			--vdev=eth_zcio0,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
+			--file-prefix=zcio_reply \
 
 dpdk_install:
 	cd /home/zcj/dpdk-custom && \
 	sudo rm -rf build && \
 	meson setup build && \
 	cd build && \
-	ninja -j32 && \
+	ninja -j64 && \
 	sudo meson install && \
 	sudo ldconfig
+
+dpdk_env_image:
+	cd $(DPDK_ENV_PATH) && \
+	docker build -t dpdk-env . && \
+	docker image prune -f
+
+dpdk_base_image:
+	cd /home/zcj && \
+	tar -cvf $(DPDK_BASE_PATH)/custom_dpdk.tar --exclude=dpdk-custom/build dpdk-custom
+	cd $(DPDK_BASE_PATH) && \
+	docker build -t dpdk-base . && \
+	docker image prune -f
+
+zcio_host:
+	cd zcio_host && \
+	make clean && \
+	make static
+
+zcio_docker_image:
+	cd zcio_docker && \
+	make clean && \
+	make static && \
+	docker build -t zcio_docker . && \
+	docker image prune -f
+
+zcio_ipfilter_image:
+	cd zcio_ipfilter && \
+	make clean && \
+	make static && \
+	docker build -t zcio_ipfilter . && \
+	docker image prune -f
+
+zcio_log_image:
+	cd zcio_log && \
+	make clean && \
+	make static && \
+	docker build -t zcio_log . && \
+	docker image prune -f
+
+zcio_reply_image:
+	cd zcio_reply && \
+	make clean && \
+	make static && \
+	docker build -t zcio_reply . && \
+	docker image prune -f
+
+clean:
+	@sudo rm -rf /tmp/zcio_server*
+	@sudo rm -rf /tmp/memctl.sock
+	@sudo rm -f /dev/hugepages/*
+

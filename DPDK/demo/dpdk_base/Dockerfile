@@ -1,34 +1,15 @@
-# DPDK docker image 
+# DPDK base image
 
-FROM ubuntu:latest
+FROM dpdk-env:latest
 
 # copy DPDK source code
-COPY ./dpdk_base/dpdk.tar.xz /usr/src/
-
-# system requirements
-ARG DEPENDENCIES="\
-    pkg-config \
-    build-essential \
-    python3-pyelftools \
-    libnuma-dev \
-    meson \
-    ninja-build \
-    pciutils \
-    libarchive13 \
-    iproute2 \
-    libbpf-dev \
-"
-
-RUN apt-get update && \
-    apt-get install -y $DEPENDENCIES && \
-    rm -rf /var/lib/apt/lists/*
+COPY ./* /usr/src/dpdk/
 
 # install DPDK
-WORKDIR /usr/src/
-RUN tar -xf dpdk.tar.xz && \
-    mv dpdk-stable-23.11.1 dpdk && \
-    rm dpdk.tar.xz && \
-    cd dpdk && \
+WORKDIR /usr/src/dpdk/
+RUN tar -xf custom_dpdk.tar && \
+    rm -rf custom_dpdk.tar && \
+    cd dpdk-custom && \
     meson setup build && \
     cd build && \
     ninja && \

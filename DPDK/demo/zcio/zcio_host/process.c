@@ -144,6 +144,20 @@ static void phynic_out_process(struct rte_mbuf *m)
     rte_ether_addr_copy(&tmp_mac, &eth_hdr->src_addr);
 }
 
+static void loop_tx(uint16_t port_id, uint16_t queue_id, 
+	struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	uint16_t ret = 0;
+	uint16_t nb_sent = 0;
+
+	ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts, nb_pkts);
+	while(ret < nb_pkts && !force_quit) {
+		nb_sent += ret;
+		nb_pkts -= ret;
+		ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts + nb_sent, nb_pkts);
+	}
+}
+
 int phy_nic_send(void *arg __rte_unused)
 {
     uint16_t portid = phy_nic.info[0].portid;
@@ -157,11 +171,7 @@ int phy_nic_send(void *arg __rte_unused)
         for(int i = 0; i < nb_tx; i++) {
             phynic_out_process(bufs[i]);
         }
-        ret = rte_eth_tx_burst(portid, 0, bufs, nb_tx);
-        while(ret < nb_tx) {
-            nb_tx -= ret;
-            ret = rte_eth_tx_burst(portid, 0, (bufs + ret), nb_tx);
-        }
+        loop_tx(portid, 0, bufs, nb_tx);
     }
 
     nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
@@ -205,16 +215,10 @@ int zcio_nic_send(void *arg)
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_tx;
     uint16_t ret = 0;
-    uint16_t nb_sent = 0;;
 
     while(!force_quit) {
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
-        ret = rte_eth_tx_burst(portid, 0, bufs, nb_tx);
-        while(ret < nb_tx) {
-            nb_tx -= ret;
-            nb_sent += ret;
-            ret = rte_eth_tx_burst(portid, 0, (bufs + nb_sent), nb_tx);
-        }
+        loop_tx(portid, 0, bufs, nb_tx);
     }
     
     nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
