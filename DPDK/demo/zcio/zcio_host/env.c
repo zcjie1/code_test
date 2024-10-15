@@ -106,12 +106,12 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 		
-	// retval = rte_eth_promiscuous_enable(port);
-	// if (retval < 0) {
-	// 	printf("Cannot enable promiscuous mode: err=%d, port=%u\n",
-	// 			retval, port);
-	// 	return retval;
-	// }
+	retval = rte_eth_promiscuous_enable(port);
+	if (retval < 0) {
+		printf("Cannot enable promiscuous mode: err=%d, port=%u\n",
+				retval, port);
+		return retval;
+	}
 		
 	// 输出网卡信息
 	struct rte_ether_addr addr;
@@ -152,8 +152,13 @@ void nic_txring_init(struct nic_info *nic)
 {
 	nic->tx_name = (char *)malloc(64);
 	sprintf(nic->tx_name, "tx_ring_%d", nic->portid);
-	nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, rte_socket_id(),
+	if(nic->portid == 0) {
+		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, rte_socket_id(),
+			RING_F_MP_HTS_ENQ| RING_F_SC_DEQ);
+	}else {
+		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, rte_socket_id(),
 			RING_F_SP_ENQ| RING_F_SC_DEQ);
+	}
 }
 
 void nic_txring_release(struct nic_info *nic)
@@ -183,7 +188,7 @@ void route_table_init(void)
 	
 	// 转发至物理网卡，发出
 	entry = &rtable.entry[rtable.entry_num];
-	entry->ipaddr = zcio_nic.info[3].ipaddr;
+	entry->ipaddr = zcio_nic.info[zcio_nic.nic_num - 1].ipaddr;
 	entry->info = &phy_nic.info[0];
 	rtable.entry_num++;
 }

@@ -263,6 +263,9 @@ static int message_log(void *arg __rte_unused)
 
 	while(!force_quit) {
 		nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
+		if(nb_rx == 0)
+			continue;
+		printf("Received %d packets\n", nb_rx);
 		for(int i = 0; i < nb_rx; i++) {
 			parse_pkt(bufs[i], log);
 		}
@@ -298,6 +301,12 @@ int main(int argc, char *argv[])
 	printf("ports number: %u\n", nb_ports);
 	if (nb_ports < 1)
 		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
+	
+	// 分配内存池
+	mbuf_pool = rte_pktmbuf_pool_create("share_pool", 1,
+		0, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	if (mbuf_pool == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
     // 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid)

@@ -174,7 +174,6 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 	
-	// route_ring = rte_ring_create("route_ring", 4096, rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
 	route_table_init();
 		
 	printf("\nStart Processing...\n\n");
@@ -183,18 +182,18 @@ int main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error: The number of zcio nic is not enough\n");
 
 	// 分配工作核心任务
-	// worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	// rte_eal_remote_launch(route_process, NULL, worker_id);
-	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(phy_nic_receive, NULL, worker_id);
-	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(phy_nic_send, NULL, worker_id);
 	for(int i = 0; i < zcio_nic.nic_num; i++) {
 		worker_id = rte_get_next_lcore(worker_id, 1, 0);
-		rte_eal_remote_launch(zcio_nic_receive, &zcio_nic.info[i], worker_id);
-		worker_id = rte_get_next_lcore(worker_id, 1, 0);
 		rte_eal_remote_launch(zcio_nic_send, &zcio_nic.info[i], worker_id);
+		worker_id = rte_get_next_lcore(worker_id, 1, 0);
+		rte_eal_remote_launch(zcio_nic_receive, &zcio_nic.info[i], worker_id);
+		
 	}
+	worker_id = rte_get_next_lcore(worker_id, 1, 0);
+	rte_eal_remote_launch(phy_nic_send, NULL, worker_id);
+	worker_id = rte_get_next_lcore(worker_id, 1, 0);
+	rte_eal_remote_launch(phy_nic_receive, NULL, worker_id);
+	
 	
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

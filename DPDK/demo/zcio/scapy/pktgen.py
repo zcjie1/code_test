@@ -33,7 +33,10 @@ ip_list = [
     # '10.10.5.144', '10.10.5.115', '10.10.5.69', '10.10.5.206', '10.10.5.136',
     # '10.10.5.211', '10.10.5.168', '10.10.5.48', '10.10.5.240', '10.10.5.93'
 ]
+
 dst_ip = "10.10.4.119"
+
+log = open("packet.log", "w+")
 
 def generate_random_string(length):
     # 选择字符集，例如ASCII字母和数字
@@ -53,9 +56,10 @@ def generate_random_port(port_range):
 
 
 def generate_udp_packet():
-    custom_str = generate_random_string(1470)
+    custom_str = generate_random_string(1460)
 
     eth_layer = Ether()
+    eth_layer.__setattr__('dst', '00:50:56:bf:a9:7c')
 
     ip_layer = IP()
     source_ip = random.choice(ip_list)
@@ -76,15 +80,16 @@ def send_packet(cpu_core):
     while(True):
         packet = generate_udp_packet()
         sendp(packet, iface='ens33', count=1, loop=0, inter=0)
-        time.sleep(1)
+        time.sleep(0.1)
 
 def receive_packet(cpu_core):
     os.sched_setaffinity(0, [cpu_core])
     def packet_callback(packet):
         if packet.haslayer(IP) and packet[IP].src == dst_ip:
         # if packet.haslayer(IP) and packet[IP].dst == dst_ip:
-            print(f"[{packet[IP].src}|{packet[Ether].src}] --> [{packet[IP].dst}|{packet[Ether].dst}] : {packet.load}")
-    sniff(iface="ens33", prn=packet_callback, filter="ip", store=False)
+            # packet.show()
+            print(f"Receive [{packet[IP].src}|{packet[Ether].src}] --> [{packet[IP].dst}|{packet[Ether].dst}] : {packet.load}", file=log)
+    sniff(iface="ens34", prn=packet_callback, filter="ip", store=False)
 
 if __name__ == "__main__":
     # 创建发送线程
@@ -103,3 +108,5 @@ if __name__ == "__main__":
         send_thread.join()
 
     receive_thread.join()
+
+    log.close()

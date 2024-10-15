@@ -239,13 +239,21 @@ static int ip_filter(void *arg __rte_unused)
 	int start_idx = 0;
 	int tx_len = 0;
 
+	void *hash_data;
+
 	while(!force_quit) {
 		nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
+		if(nb_rx == 0)
+			continue;
+		printf("Received %d packets\n", nb_rx);
 		for(int i = 0; i < nb_rx; i++) {
 			ipv4_hdr = mbuf_ip_hdr(bufs[i]);
 			srcip = ipv4_hdr->src_addr;
-			ret = rte_hash_lookup(ip_blacklist_table, &srcip);
-			if(ret > 0) {
+			ret = rte_hash_lookup_data(ip_blacklist_table, &srcip, &hash_data);
+			// printf("key: %u\n", srcip);
+			// printf("Hash loop up ret: %d\n", ret);
+			if(ret >= 0) {
+				// printf("Send %d packets\n", tx_len);
 				loop_tx(portid, 0, bufs + start_idx, tx_len);
 				printf("Drop a packet from %s\n", inet_ntoa(*(struct in_addr *)&srcip));
 				raw_packet_free_client(portid, 0, &bufs[i], 1);
@@ -255,10 +263,14 @@ static int ip_filter(void *arg __rte_unused)
 				tx_len += 1;
 			}
 		}
-		loop_tx(portid, 0, bufs + start_idx, tx_len);
+		// printf("Send %d packets\n", tx_len);
+		if(start_idx < nb_rx)
+			loop_tx(portid, 0, bufs + start_idx, tx_len);
 		start_idx = 0;
 		tx_len = 0;
 	}
+
+	rte_hash_free(ip_blacklist_table);
 	
 	return 0;
 }
@@ -270,27 +282,12 @@ int main(int argc, char *argv[])
 	unsigned int nb_lcores = 0;
 	uint16_t portid;
 	unsigned int worker_id = -1;
+	int ret = 0;
 	
 	force_quit = false;
     
-    struct rte_hash_parameters params = {
-        .name = "ip_blacklist_table",
-        .entries = 256,
-        .reserved = 0,
-        .key_len = sizeof(uint32_t),
-        .hash_func = (rte_hash_function)rte_jhash_32b,
-        .hash_func_init_val = 0,
-        .socket_id = rte_socket_id(),
-        .extra_flag = RTE_HASH_EXTRA_FLAGS_EXT_TABLE,
-    };
-    ip_blacklist_table = rte_hash_create(&params);
-    for(int i = 0; i < 15; i++) {
-        inet_pton(AF_INET, ip_blacklist_str[i], &ip_blacklist_num[i]);
-        rte_hash_add_key(ip_blacklist_table, &ip_blacklist_num[i]);
-    }
-	
     // eal环境初始化
-	int ret = rte_eal_init(argc, argv);
+	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
 
@@ -304,6 +301,41 @@ int main(int argc, char *argv[])
 	printf("ports number: %u\n", nb_ports);
 	if (nb_ports < 1)
 		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
+	
+	// 初始化IP地址黑名单哈希表
+	struct rte_hash_parameters params = {
+        .name = "blackip",
+        .entries = 256,
+        .reserved = 0,
+        .key_len = 1,
+        .hash_func = (rte_hash_function)rte_jhash_32b,
+        .hash_func_init_val = 1,
+        .socket_id = rte_socket_id(),
+        .extra_flag = 0,
+    };
+    ip_blacklist_table = rte_hash_create(&params);
+	if(ip_blacklist_table == NULL) {
+		printf("Error: Fail to create hash table -- %s\n", strerror(errno));
+	}
+    for(int i = 0; i < 15; i++) {
+        inet_pton(AF_INET, ip_blacklist_str[i], &ip_blacklist_num[i]);
+		// printf("Add key %u\n", ip_blacklist_num[i]);
+        ret = rte_hash_add_key_data(ip_blacklist_table, &ip_blacklist_num[i], NULL);
+		if(ret != 0) {
+			printf("Error: Fail to add key %s\n", ip_blacklist_str[i]);
+		}
+		
+		// void *data;
+		// uint32_t key = ip_blacklist_num[i];
+		// ret = rte_hash_lookup_data(ip_blacklist_table, &key, &data);
+		// printf("Lookup ret: %d\n", ret);
+    }
+
+	// 分配内存池
+	mbuf_pool = rte_pktmbuf_pool_create("share_pool", 1,
+		0, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	if (mbuf_pool == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
     // 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid)

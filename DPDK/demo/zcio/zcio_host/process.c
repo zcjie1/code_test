@@ -60,7 +60,7 @@ static void arp_process(struct rte_mbuf *m)
     rte_eth_macaddr_get(phy_nic.info[0].portid, &src_mac);
     
     struct arphdr *arph = mbuf_arphdr(m);
-    if(arph->ar_op == htons(ARP_REQUEST) && 
+    if(arph->ar_op == htons((uint16_t)ARP_REQUEST) && 
         arph->ar_tip == (uint32_t)ip_addr.s_addr) {
         eth = mbuf_eth_hdr(m);
         sip = arph->ar_tip;
@@ -68,9 +68,10 @@ static void arp_process(struct rte_mbuf *m)
         rte_ether_addr_copy(&eth->src_addr, &dst_mac);
         eth_hdr_set(eth, RTE_ETHER_TYPE_ARP, &src_mac, &dst_mac);
         arp_set_arphdr(arph, ARP_REPLY, sip, dip, &src_mac, &dst_mac);
-        ret = rte_eth_tx_burst(phy_nic.info[0].portid, 0, &m, 1);
-        if(ret == 0)
+        ret = rte_ring_enqueue(phy_nic.info[0].tx_ring, m);
+        if(ret < 0) {
             rte_pktmbuf_free(m);
+        }
     }else {
 		rte_pktmbuf_free(m);
 	}
@@ -79,6 +80,7 @@ static void arp_process(struct rte_mbuf *m)
 int phy_nic_receive(void *arg __rte_unused)
 {
     uint16_t portid = phy_nic.info[0].portid;
+    // printf("Start receiving packet from port %u\n", portid);
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_rx;
     int ret = 0;
@@ -90,23 +92,30 @@ int phy_nic_receive(void *arg __rte_unused)
         nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
         if (nb_rx == 0)
             continue;
+        // printf("Receive %d packets from phy nic\n", nb_rx);
         for(int i = 0; i < nb_rx; i++) {
             eth_hdr = mbuf_eth_hdr(bufs[i]);
             if(eth_hdr->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
                 arp_process(bufs[i]);
             }else if(eth_hdr->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
                 ipv4_hdr = mbuf_ip_hdr(bufs[i]);
-                if(ipv4_hdr->hdr_checksum != rte_ipv4_cksum(ipv4_hdr)) {
+                if(ipv4_hdr->next_proto_id != IPPROTO_UDP) {
                     rte_pktmbuf_free(bufs[i]);
                     continue;
                 }
+                
                 struct nic_info *nic = find_next_port(bufs[i]);
-                if(nic == NULL)
+                if(nic == NULL) {
                     rte_pktmbuf_free(bufs[i]);
+                    continue;
+                }
+                    
                 ret = rte_ring_enqueue(nic->tx_ring, bufs[i]);
                 if(ret < 0) {
                     rte_pktmbuf_free(bufs[i]);
+                    continue;
                 }
+                printf("Receive 1 UDP packet from phy nic\n");
             }else {
                 rte_pktmbuf_free(bufs[i]);
             }
@@ -118,6 +127,10 @@ int phy_nic_receive(void *arg __rte_unused)
 static void phynic_out_process(struct rte_mbuf *m)
 {
     struct rte_ether_hdr *eth_hdr = mbuf_eth_hdr(m);
+    
+    if(eth_hdr->ether_type == htons(RTE_ETHER_TYPE_ARP))
+        return;
+    
     struct rte_ipv4_hdr *ipv4_hdr = mbuf_ip_hdr(m);
     struct rte_udp_hdr *udp_hdr = mbuf_udp_hdr(m);
     
@@ -132,9 +145,11 @@ static void phynic_out_process(struct rte_mbuf *m)
     ipv4_hdr->time_to_live = 64;
     
     // UDP 校验和
+    udp_hdr->dgram_cksum = 0;
     udp_hdr->dgram_cksum = rte_ipv4_udptcp_cksum(ipv4_hdr, (void *)udp_hdr);
     
     // IP 校验和
+    ipv4_hdr->hdr_checksum = 0;
     ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
     
     // MAC 地址交换
@@ -168,6 +183,9 @@ int phy_nic_send(void *arg __rte_unused)
 
     while(!force_quit) {
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
+        if(nb_tx == 0)
+            continue;
+        // printf("Send %d packets from phy nic to outside\n", nb_tx);
         for(int i = 0; i < nb_tx; i++) {
             phynic_out_process(bufs[i]);
         }
@@ -197,8 +215,10 @@ int zcio_nic_receive(void *arg)
             continue;
         for(int i = 0; i < nb_rx; i++) {
             struct nic_info *info = find_next_port(bufs[i]);
-            if(info == NULL)
+            if(info == NULL) {
                 rte_pktmbuf_free(bufs[i]);
+                continue;
+            }
             ret = rte_ring_enqueue(info->tx_ring, bufs[i]);
             if(ret < 0) {
                 rte_pktmbuf_free(bufs[i]);
@@ -218,6 +238,9 @@ int zcio_nic_send(void *arg)
 
     while(!force_quit) {
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
+        if(nb_tx == 0)
+            continue;
+        // printf("Send %d packets to zcio client\n", nb_tx);
         loop_tx(portid, 0, bufs, nb_tx);
     }
     

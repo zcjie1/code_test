@@ -1,4 +1,4 @@
-.PHONY: clean dpdk zcio dpdk_install dpdk_env_image dpdk_base_image zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
+.PHONY: clean dpdk zcio scapy dpdk_install dpdk_env_image dpdk_base_image zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
 DPDK_ENV_PATH = /home/zcj/code_test/DPDK/demo/dpdk_env/
 DPDK_BASE_PATH = /home/zcj/code_test/DPDK/demo/dpdk_base/
@@ -6,6 +6,9 @@ DPDK_BASE_PATH = /home/zcj/code_test/DPDK/demo/dpdk_base/
 all: dpdk zcio
 dpdk: dpdk_install dpdk_env_image dpdk_base_image
 zcio: zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
+
+scapy:
+	@sudo python3 ./scapy/pktgen.py
 
 host_app: clean
 	@sudo zcio_host/build/zcio_host \
@@ -22,7 +25,7 @@ zcio_ipfilter_docker:
 		-v /tmp/zcio_server0:/var/run/zcio_server0 \
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
-		zcio_ipfilter zcio_ipfilter\ \
+		zcio_ipfilter zcio_ipfilter \
 			-l 12-13 -m 1024\
 			--no-pci \
 			--vdev=eth_zcio0,server=0,server-iface=/var/run/zcio_server0,memctl-iface=/var/run/memctl.sock \
@@ -35,6 +38,7 @@ zcio_log_docker:
 		-v /tmp/zcio_server1:/var/run/zcio_server0 \
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
+		-v ./zcio_log/zcio.log:/var/log/zcio.log \
 		zcio_log zcio_log \
 			-l 14-15 -m 1024\
 			--no-pci \
