@@ -33,5 +33,6 @@ int phy_nic_receive(void *arg __rte_unused);
 int phy_nic_send(void *arg __rte_unused);
 int zcio_nic_receive(void *arg);
 int zcio_nic_send(void *arg);
+int statistic_output(void *arg);
 
 #endif // !__PROCESS_H__

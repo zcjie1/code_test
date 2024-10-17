@@ -193,7 +193,8 @@ int main(int argc, char *argv[])
 	rte_eal_remote_launch(phy_nic_send, NULL, worker_id);
 	worker_id = rte_get_next_lcore(worker_id, 1, 0);
 	rte_eal_remote_launch(phy_nic_receive, NULL, worker_id);
-	
+	worker_id = rte_get_next_lcore(worker_id, 1, 0);
+	rte_eal_remote_launch(statistic_output, NULL, worker_id);
 	
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

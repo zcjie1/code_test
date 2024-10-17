@@ -1,5 +1,6 @@
 #include "process.h"
 #include <byteswap.h>
+#include <unistd.h>
 
 extern bool force_quit;
 extern struct nic phy_nic;
@@ -77,6 +78,7 @@ static void arp_process(struct rte_mbuf *m)
 	}
 }
 
+static uint64_t recv_pkt_num;
 int phy_nic_receive(void *arg __rte_unused)
 {
     uint16_t portid = phy_nic.info[0].portid;
@@ -84,7 +86,7 @@ int phy_nic_receive(void *arg __rte_unused)
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_rx;
     int ret = 0;
-
+    
     struct rte_ether_hdr *eth_hdr = NULL;
     struct rte_ipv4_hdr *ipv4_hdr = NULL;
     
@@ -109,13 +111,13 @@ int phy_nic_receive(void *arg __rte_unused)
                     rte_pktmbuf_free(bufs[i]);
                     continue;
                 }
-                    
+                ++recv_pkt_num;
                 ret = rte_ring_enqueue(nic->tx_ring, bufs[i]);
                 if(ret < 0) {
                     rte_pktmbuf_free(bufs[i]);
                     continue;
                 }
-                printf("Receive 1 UDP packet from phy nic\n");
+                // printf("Receive %lu packet from phy nic\n", ++recv_pkt_num);
             }else {
                 rte_pktmbuf_free(bufs[i]);
             }
@@ -251,4 +253,12 @@ int zcio_nic_send(void *arg)
     }
     
     return 0;
+}
+
+int statistic_output(void *arg)
+{
+    while(!force_quit) {
+        sleep(1);
+        printf("Receive %lu packets from phy nic\n", recv_pkt_num);
+    }
 }
