@@ -4,10 +4,12 @@
 # binary name
 SERVER = server
 CLIENT = client
+TEST = test
 
 # all source are stored in SRCS-y
 SRCS-y := server.c
 SRCS-z := client.c
+SRCS-x := test.c
 
 PKGCONF ?= pkg-config
 
@@ -21,6 +23,8 @@ server: build/$(SERVER)-static
 	@ln -sf $(SERVER)-static build/$(SERVER)
 client: build/$(CLIENT)-static
 	@ln -sf $(CLIENT)-static build/$(CLIENT)
+test: build/$(TEST)-static
+	@ln -sf $(TEST)-static build/$(TEST)
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
@@ -44,6 +48,9 @@ build/$(SERVER)-static: $(SRCS-y) Makefile $(PC_FILE) | build
 build/$(CLIENT)-static: $(SRCS-z) Makefile $(PC_FILE) | build
 	@$(CC) $(CFLAGS) $(SRCS-z) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
+build/$(TEST)-static: $(SRCS-x) Makefile $(PC_FILE) | build
+	@$(CC) $(CFLAGS) $(SRCS-x) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
+
 build:
 	@mkdir -p $@
 
@@ -51,4 +58,5 @@ build:
 clean:
 	rm -f build/$(SERVER) build/$(SERVER)-static build/$(SERVER)-shared
 	rm -f build/$(CLIENT) build/$(CLIENT)-static build/$(CLIENT)-shared
+	rm -f build/$(TEST) build/$(TEST)-static build/$(TEST)-shared
 	test -d build && rmdir -p build || true
