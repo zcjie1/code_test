@@ -2,10 +2,11 @@
 
 DPDK_ENV_PATH = /home/zcj/code_test/DPDK/demo/dpdk_env/
 DPDK_BASE_PATH = /home/zcj/code_test/DPDK/demo/dpdk_base/
+ZCIO_DPERF_PATH = /home/zcj/code_test/DPDK/demo/zcio/zcio_dperf/
 
 all: dpdk zcio
 dpdk: dpdk_install dpdk_env_image dpdk_base_image
-zcio: zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
+zcio: zcio_host zcio_dperf_image zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
 scapy:
 	@sudo python3 ./scapy/pktgen.py
@@ -17,6 +18,28 @@ host_app: clean
 		--vdev=eth_zcio1,server=1,server-iface=/tmp/zcio_server1 \
 		--vdev=eth_zcio2,server=1,server-iface=/tmp/zcio_server2 \
 		--file-prefix=host \
+
+zcio_dperf_server:
+	@docker run \
+		-it --rm  \
+		--privileged \
+		-v /tmp/zcio_server0:/var/run/zcio_server0 \
+		-v /tmp/memctl.sock:/var/run/memctl.sock \
+		-v /dev/hugepages:/dev/hugepages \
+		-v ./zcio_dperf/server.conf:/tmp/dperf_server.conf \
+		zcio_dperf dperf \
+			-c /tmp/dperf_server.conf
+
+zcio_dperf_client:
+	@docker run \
+		-it --rm  \
+		--privileged \
+		-v /tmp/zcio_server0:/var/run/zcio_server0 \
+		-v /tmp/memctl.sock:/var/run/memctl.sock \
+		-v /dev/hugepages:/dev/hugepages \
+		-v ./zcio_dperf/client.conf:/tmp/dperf_client.conf \
+		zcio_dperf dperf \
+			-c /tmp/dperf_client.conf
 
 zcio_ipfilter_docker:
 	@docker run \
@@ -83,6 +106,18 @@ zcio_host:
 	cd zcio_host && \
 	make clean && \
 	make static
+
+zcio_dperf_image:
+	cd /home/zcj && \
+	tar -cvf $(ZCIO_DPERF_PATH)/dperf.tar \
+		--exclude=dperf-custom/build \
+		--exclude=dperf-custom/.vscode \
+		--exclude=dperf-custom/.git \
+		--exclude=dperf-custom/.github \
+		dperf-custom && \
+	cd $(ZCIO_DPERF_PATH) && \
+	docker build -t zcio_dperf . && \
+	docker image prune -f
 
 zcio_docker_image:
 	cd zcio_docker && \
