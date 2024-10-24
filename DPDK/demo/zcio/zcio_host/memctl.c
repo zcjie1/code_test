@@ -4,8 +4,10 @@
 #include <rte_errno.h>
 #include <unistd.h>
 #include "memctl.h"
+#include "env.h"
 
-extern bool force_quit;
+// extern bool force_quit;
+extern struct config cfg;
 
 static int
 update_memory_region(const struct rte_memseg_list *msl __rte_unused,
@@ -157,7 +159,7 @@ int memory_manager(void *arg __rte_unused)
 		printf("	wa_mmap_offset: %lu\n", wa.regions[i].mmap_offset);
  	}
 	
-	while(!force_quit) {
+	while(!cfg.force_quit) {
 		// 接受客户端连接
 		client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &addrlen);
 		if (client_sock == -1) {
@@ -170,7 +172,7 @@ int memory_manager(void *arg __rte_unused)
 
 		// 发送消息
 		ret = sendmsg(client_sock, &msgh, MSG_CMSG_CLOEXEC);
-		while(ret == -1 && !force_quit) {
+		while(ret == -1 && !cfg.force_quit) {
 			perror("MEMCTL: Sendmsg failed");
 			usleep(1000);
 			ret = sendmsg(client_sock, &msgh, MSG_CMSG_CLOEXEC);

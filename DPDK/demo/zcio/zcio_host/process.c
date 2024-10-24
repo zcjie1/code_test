@@ -2,21 +2,29 @@
 #include <byteswap.h>
 #include <unistd.h>
 
-extern bool force_quit;
-extern struct nic phy_nic;
-extern struct nic zcio_nic;
-extern struct route_table rtable;
-extern struct rte_ring *route_ring;
+extern struct config cfg;
 
 struct nic_info* find_next_port(struct rte_mbuf *m)
 {
-    struct route_table *table = &rtable;
-    struct rte_ipv4_hdr *ipv4_hdr = mbuf_ip_hdr(m);
-    uint32_t dstip = ipv4_hdr->dst_addr;
+    struct route_table *table = &cfg.rtable;
+    struct rte_ether_hdr *eth = mbuf_eth_hdr(m);
+    struct arphdr *arph = NULL;
+    struct rte_ipv4_hdr *ipv4_hdr = NULL;
+    uint32_t dstip = 0;
+    
+    if(eth->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
+        ipv4_hdr = mbuf_ip_hdr(m);
+        dstip = ipv4_hdr->dst_addr;
+    }else if(eth->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
+        arph = mbuf_arphdr(m);
+        dstip = arph->ar_tip;
+    }else {
+        return NULL;
+    }
 
     for(int i = 0; i < table->entry_num; i++) {
         if(dstip == table->entry[i].ipaddr) {
-            ipv4_hdr->dst_addr = table->entry[i].info->ipaddr;
+            // ipv4_hdr->dst_addr = table->entry[i].info->ipaddr;
             return table->entry[i].info;
         }
     }
@@ -49,7 +57,7 @@ static inline void arp_set_arphdr(struct arphdr *arp, uint16_t op, uint32_t sip,
 static void arp_process(struct rte_mbuf *m)
 {
 	struct in_addr ip_addr;
-    ip_addr.s_addr = (in_addr_t)phy_nic.info[0].ipaddr;
+    ip_addr.s_addr = (in_addr_t)cfg.phy_nic.info[0].ipaddr;
     uint32_t sip;
     uint32_t dip;
     struct rte_ether_addr src_mac;
@@ -58,7 +66,7 @@ static void arp_process(struct rte_mbuf *m)
     
     uint16_t ret = 0;
     
-    rte_eth_macaddr_get(phy_nic.info[0].portid, &src_mac);
+    rte_eth_macaddr_get(cfg.phy_nic.info[0].portid, &src_mac);
     
     struct arphdr *arph = mbuf_arphdr(m);
     if(arph->ar_op == htons((uint16_t)ARP_REQUEST) && 
@@ -69,7 +77,7 @@ static void arp_process(struct rte_mbuf *m)
         rte_ether_addr_copy(&eth->src_addr, &dst_mac);
         eth_hdr_set(eth, RTE_ETHER_TYPE_ARP, &src_mac, &dst_mac);
         arp_set_arphdr(arph, ARP_REPLY, sip, dip, &src_mac, &dst_mac);
-        ret = rte_ring_enqueue(phy_nic.info[0].tx_ring, m);
+        ret = rte_ring_enqueue(cfg.phy_nic.info[0].tx_ring, m);
         if(ret < 0) {
             rte_pktmbuf_free(m);
         }
@@ -81,7 +89,10 @@ static void arp_process(struct rte_mbuf *m)
 static uint64_t recv_pkt_num;
 int phy_nic_receive(void *arg __rte_unused)
 {
-    uint16_t portid = phy_nic.info[0].portid;
+    if(cfg.phy_nic.nic_num == 0)
+        return 0;
+    
+    uint16_t portid = cfg.phy_nic.info[0].portid;
     // printf("Start receiving packet from port %u\n", portid);
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_rx;
@@ -90,7 +101,7 @@ int phy_nic_receive(void *arg __rte_unused)
     struct rte_ether_hdr *eth_hdr = NULL;
     struct rte_ipv4_hdr *ipv4_hdr = NULL;
     
-    while (!force_quit) {
+    while (!cfg.force_quit) {
         nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
         if (nb_rx == 0)
             continue;
@@ -129,7 +140,6 @@ int phy_nic_receive(void *arg __rte_unused)
 static void phynic_out_process(struct rte_mbuf *m)
 {
     struct rte_ether_hdr *eth_hdr = mbuf_eth_hdr(m);
-    
     if(eth_hdr->ether_type == htons(RTE_ETHER_TYPE_ARP))
         return;
     
@@ -143,7 +153,7 @@ static void phynic_out_process(struct rte_mbuf *m)
     
     // IP 设置
     ipv4_hdr->dst_addr = ipv4_hdr->src_addr;
-    ipv4_hdr->src_addr = phy_nic.info[0].ipaddr;
+    ipv4_hdr->src_addr = cfg.phy_nic.info[0].ipaddr;
     ipv4_hdr->time_to_live = 64;
     
     // UDP 校验和
@@ -168,7 +178,7 @@ static void loop_tx(uint16_t port_id, uint16_t queue_id,
 	uint16_t nb_sent = 0;
 
 	ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts, nb_pkts);
-	while(ret < nb_pkts && !force_quit) {
+	while(ret < nb_pkts && !cfg.force_quit) {
 		nb_sent += ret;
 		nb_pkts -= ret;
 		ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts + nb_sent, nb_pkts);
@@ -177,13 +187,16 @@ static void loop_tx(uint16_t port_id, uint16_t queue_id,
 
 int phy_nic_send(void *arg __rte_unused)
 {
-    uint16_t portid = phy_nic.info[0].portid;
+    if(cfg.phy_nic.nic_num == 0)
+        return 0;
+    
+    uint16_t portid = cfg.phy_nic.info[0].portid;
     struct rte_mbuf *bufs[MAX_BURST_NUM];
-    struct rte_ring *tx_ring = phy_nic.info[0].tx_ring;
+    struct rte_ring *tx_ring = cfg.phy_nic.info[0].tx_ring;
     uint16_t nb_tx = 0;
     uint16_t ret = 0;
 
-    while(!force_quit) {
+    while(!cfg.force_quit) {
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
         if(nb_tx == 0)
             continue;
@@ -211,7 +224,7 @@ int zcio_nic_receive(void *arg)
     uint16_t nb_rx;
     int ret = 0;
     
-    while (!force_quit) {
+    while (!cfg.force_quit) {
         nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
         if (nb_rx == 0)
             continue;
@@ -238,7 +251,7 @@ int zcio_nic_send(void *arg)
     uint16_t nb_tx;
     uint16_t ret = 0;
 
-    while(!force_quit) {
+    while(!cfg.force_quit) {
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
         if(nb_tx == 0)
             continue;
@@ -257,7 +270,7 @@ int zcio_nic_send(void *arg)
 
 int statistic_output(void *arg)
 {
-    while(!force_quit) {
+    while(!cfg.force_quit) {
         sleep(1);
         printf("Receive %lu packets from phy nic\n", recv_pkt_num);
     }

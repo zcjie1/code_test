@@ -1,19 +1,34 @@
 #include "env.h"
+#include "memctl.h"
 
-extern struct nic phy_nic;
-extern struct nic zcio_nic;
-extern struct route_table rtable;
+// extern bool force_quit;
+// extern struct nic phy_nic;
+// extern struct nic zcio_nic;
+// extern struct route_table rtable;
+// extern struct rte_mempool *mbuf_pool;
+
+struct config cfg = {
+	.force_quit = false,
+	.curr_worker = -1,
+	.mbuf_pool = NULL,
+};
+
+#define MIN_LCORES_NUM 4
+#define MIN_PORTS_NUM 2
+#define ZCIO_MBUF_BUF_SIZE 10240
 
 // zcio网卡IP地址分配
 char *zcio_ip_list[] = {
-	"192.168.2.1", "192.168.2.2",
-	"192.168.2.3", "192.168.2.4",
+	"192.168.2.1", "192.168.2.2", "192.168.2.3", "192.168.2.4",
+	"192.168.2.5", "192.168.2.6", "192.168.2.7", "192.168.2.8",
+	"192.168.2.9", "192.168.2.10", "192.168.2.11", "192.168.2.12"
 };
 
 // 物理网卡IP地址分配
 char *phy_ip_list[] = {
 	"10.10.4.119",
 };
+
 // 网卡初始化
 int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
@@ -23,7 +38,8 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t nb_txd = TX_RING_SIZE;
 	int retval;
 	char device_name[256];
-
+	struct nic *zcio_nic = &cfg.zcio_nic;
+	struct nic *phy_nic = &cfg.phy_nic;
 	struct rte_eth_rxconf rxconf;
 	struct rte_eth_txconf txconf;
 	
@@ -130,19 +146,19 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     printf("    Device Name: %s\n", device_name);
     printf("    Driver Name: %s\n\n", dev_info.driver_name);
 
-	// 统计网卡数量
+	// 统计网卡数量, 分配IP地址
 	if(strcmp(dev_info.driver_name, "net_zcio") == 0) {
-		zcio_nic.info[zcio_nic.nic_num].portid = port;
-		inet_pton(AF_INET, zcio_ip_list[zcio_nic.nic_num], &zcio_nic.info[zcio_nic.nic_num].ipaddr);
-		zcio_nic.info[zcio_nic.nic_num].ipaddr_str = zcio_ip_list[zcio_nic.nic_num];
-		nic_txring_init(&zcio_nic.info[zcio_nic.nic_num]);
-		zcio_nic.nic_num++;
+		zcio_nic->info[zcio_nic->nic_num].portid = port;
+		inet_pton(AF_INET, zcio_ip_list[zcio_nic->nic_num], &zcio_nic->info[zcio_nic->nic_num].ipaddr);
+		zcio_nic->info[zcio_nic->nic_num].ipaddr_str = zcio_ip_list[zcio_nic->nic_num];
+		nic_txring_init(&zcio_nic->info[zcio_nic->nic_num]);
+		zcio_nic->nic_num++;
 	}else {
-		phy_nic.info[phy_nic.nic_num].portid = port;
-		inet_pton(AF_INET, phy_ip_list[phy_nic.nic_num], &phy_nic.info[phy_nic.nic_num].ipaddr);
-		phy_nic.info[phy_nic.nic_num].ipaddr_str = phy_ip_list[phy_nic.nic_num];
-		nic_txring_init(&phy_nic.info[phy_nic.nic_num]);
-		phy_nic.nic_num++;
+		phy_nic->info[phy_nic->nic_num].portid = port;
+		inet_pton(AF_INET, phy_ip_list[phy_nic->nic_num], &phy_nic->info[phy_nic->nic_num].ipaddr);
+		phy_nic->info[phy_nic->nic_num].ipaddr_str = phy_ip_list[phy_nic->nic_num];
+		nic_txring_init(&phy_nic->info[phy_nic->nic_num]);
+		phy_nic->nic_num++;
 	}
 	
 	return 0;
@@ -172,23 +188,109 @@ void route_table_init(void)
 	struct route_entry *entry;
 	uint32_t ipaddr;
 	uint16_t portid;
+	
+	struct route_table *rtable = &cfg.rtable;
+	struct nic *zcio_nic = &cfg.zcio_nic;
+	struct nic *phy_nic = &cfg.phy_nic;
 
 	/* 初始化路由表 */
-	entry = &rtable.entry[rtable.entry_num];
-	entry->ipaddr = phy_nic.info[0].ipaddr;
-	entry->info = &zcio_nic.info[0];
-	rtable.entry_num++;
+	entry = &rtable->entry[rtable->entry_num];
 	
-	for(int i = 0; i < zcio_nic.nic_num - 1; i++) {
-		entry = &rtable.entry[rtable.entry_num];
-		entry->ipaddr = zcio_nic.info[i].ipaddr;
-		entry->info = &zcio_nic.info[i+1];
-		rtable.entry_num++;
+	// 物理网卡路由
+	for(int i = 0; i < phy_nic->nic_num; i++) {
+		entry = &rtable->entry[rtable->entry_num];
+		entry->ipaddr = phy_nic->info[i].ipaddr;
+		entry->info = &phy_nic->info[i];
+		rtable->entry_num++;
 	}
 	
-	// 转发至物理网卡，发出
-	entry = &rtable.entry[rtable.entry_num];
-	entry->ipaddr = zcio_nic.info[zcio_nic.nic_num - 1].ipaddr;
-	entry->info = &phy_nic.info[0];
-	rtable.entry_num++;
+	// zcio 网卡路由
+	for(int i = 0; i < zcio_nic->nic_num - 1; i++) {
+		entry = &rtable->entry[rtable->entry_num];
+		entry->ipaddr = zcio_nic->info[i].ipaddr;
+		entry->info = &zcio_nic->info[i];
+		rtable->entry_num++;
+	}
+}
+
+int zcio_host_init(int argc, char **argv)
+{
+	cfg.force_quit = false;
+	
+	int ret = 0;
+	uint16_t portid;
+	unsigned int nb_lcores;
+	unsigned int nb_ports;
+	unsigned int worker_id;
+	struct rte_mempool *mbuf_pool;
+	
+	// eal环境初始化
+	ret = rte_eal_init(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
+	
+	// 工作核心数量
+	nb_lcores = rte_lcore_count();
+	if (nb_lcores < MIN_LCORES_NUM)
+		rte_exit(EXIT_FAILURE, "Error: The number of work cores is insufficient\n");
+	
+	// 网卡数量
+	nb_ports = rte_eth_dev_count_avail();
+	printf("ports number: %u\n", nb_ports);
+	if (nb_ports < MIN_PORTS_NUM)
+		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
+	
+	// 分配内存池
+	mbuf_pool = rte_pktmbuf_pool_create("share_pool", NUM_MBUFS * nb_ports,
+		MBUF_CACHE_SIZE, 0, ZCIO_MBUF_BUF_SIZE, rte_socket_id());
+	if (mbuf_pool == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+	cfg.mbuf_pool = mbuf_pool;
+	
+	// 内存共享管理
+	worker_id = rte_get_next_lcore(cfg.curr_worker, 1, 0);
+	rte_eal_remote_launch(memory_manager, NULL, worker_id);
+	cfg.curr_worker = worker_id;
+	
+	// 初始化网卡
+	RTE_ETH_FOREACH_DEV(portid) {
+		ret = port_init(portid, mbuf_pool);
+		if(ret != 0) {
+			cfg.force_quit = true;
+			printf("\nError: Fail to init port %"PRIu16"\n", portid);
+			goto out;
+		}
+	}
+	
+	route_table_init();
+
+	return 0;
+
+ out:
+	// 等待工作核心结束任务
+	rte_eal_mp_wait_lcore();
+
+	// 关闭网卡
+	RTE_ETH_FOREACH_DEV(portid) {
+		printf("Closing port %d...\n", portid);
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%d, port=%d\n",
+			       ret, portid);
+		rte_eth_dev_close(portid);
+		printf("Done\n");
+	}
+
+	// 释放网卡发送队列
+	for(int i = 0; i < cfg.zcio_nic.nic_num; i++)
+		nic_txring_release(&cfg.zcio_nic.info[i]);
+	for(int i = 0; i < cfg.phy_nic.nic_num; i++)
+		nic_txring_release(&cfg.phy_nic.info[i]);
+	
+	// 释放内存池
+	rte_mempool_free(mbuf_pool);
+
+	if(ret != 0)
+		return -1;
+	return 0;
 }

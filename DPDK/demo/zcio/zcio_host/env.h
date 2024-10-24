@@ -6,8 +6,8 @@
 
 #define RX_RING_NUM 1
 #define TX_RING_NUM 1
-#define RX_RING_SIZE 1024
-#define TX_RING_SIZE 1024
+#define RX_RING_SIZE 4096
+#define TX_RING_SIZE 4096
 
 #include <rte_eal.h>
 #include <rte_ether.h>
@@ -37,9 +37,19 @@ struct route_table {
 	struct route_entry entry[64];
 };
 
+struct config {
+	bool force_quit;
+	unsigned int curr_worker;
+	struct nic phy_nic;
+	struct nic zcio_nic;
+	struct route_table rtable;
+	struct rte_mempool *mbuf_pool;
+};
+
 int port_init(uint16_t port, struct rte_mempool *mbuf_pool);
 void nic_txring_init(struct nic_info *nic);
 void nic_txring_release(struct nic_info *nic);
 void route_table_init(void);
+int zcio_host_init(int argc, char **argv);
 
 #endif // !__ENV_H__
