@@ -6,7 +6,8 @@ ZCIO_DPERF_PATH = /home/zcj/code_test/DPDK/demo/zcio/zcio_dperf/
 
 all: dpdk zcio
 dpdk: dpdk_install dpdk_env_image dpdk_base_image
-zcio: zcio_host zcio_dperf_image zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
+zcio: zcio_host zcio_dperf_image
+# zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
 scapy:
 	@sudo python3 ./scapy/pktgen.py
@@ -14,6 +15,7 @@ scapy:
 host_app: clean
 	@sudo zcio_host/build/zcio_host \
 		-l 0-11 -m 4096\
+		--no-pci \
 		--vdev=eth_zcio0,server=1,server-iface=/tmp/zcio_server0 \
 		--vdev=eth_zcio1,server=1,server-iface=/tmp/zcio_server1 \
 		--vdev=eth_zcio2,server=1,server-iface=/tmp/zcio_server2 \
@@ -34,7 +36,7 @@ zcio_dperf_client:
 	@docker run \
 		-it --rm  \
 		--privileged \
-		-v /tmp/zcio_server0:/var/run/zcio_server0 \
+		-v /tmp/zcio_server1:/var/run/zcio_server0 \
 		-v /tmp/memctl.sock:/var/run/memctl.sock \
 		-v /dev/hugepages:/dev/hugepages \
 		-v ./zcio_dperf/client.conf:/tmp/dperf_client.conf \

@@ -43,16 +43,16 @@ int main(int argc, char *argv[])
 
 	// 分配工作核心任务
 	for(int i = 0; i < cfg.zcio_nic.nic_num; i++) {
-		worker_id = rte_get_next_lcore(worker_id, 1, 0);
-		rte_eal_remote_launch(zcio_nic_send, &cfg.zcio_nic.info[i], worker_id);
-		worker_id = rte_get_next_lcore(worker_id, 1, 0);
-		rte_eal_remote_launch(zcio_nic_receive, &cfg.zcio_nic.info[i], worker_id);
+		cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
+		rte_eal_remote_launch(zcio_nic_send, &cfg.zcio_nic.info[i], cfg.curr_worker);
+		cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
+		rte_eal_remote_launch(zcio_nic_receive, &cfg.zcio_nic.info[i], cfg.curr_worker);
 		
 	}
-	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(phy_nic_send, NULL, worker_id);
-	worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	rte_eal_remote_launch(phy_nic_receive, NULL, worker_id);
+	cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
+	rte_eal_remote_launch(phy_nic_send, NULL, cfg.curr_worker);
+	cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
+	rte_eal_remote_launch(phy_nic_receive, NULL, cfg.curr_worker);
 	// worker_id = rte_get_next_lcore(worker_id, 1, 0);
 	// rte_eal_remote_launch(statistic_output, NULL, worker_id);
 	

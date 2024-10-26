@@ -1,7 +1,7 @@
 #ifndef __ENV_H__
 #define __ENV_H__
 
-#define NUM_MBUFS 8192
+#define NUM_MBUFS 10240
 #define MBUF_CACHE_SIZE 512
 
 #define RX_RING_NUM 1

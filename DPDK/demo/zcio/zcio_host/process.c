@@ -11,17 +11,27 @@ struct nic_info* find_next_port(struct rte_mbuf *m)
     struct arphdr *arph = NULL;
     struct rte_ipv4_hdr *ipv4_hdr = NULL;
     uint32_t dstip = 0;
+    // struct in_addr ip;
     
-    if(eth->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
-        ipv4_hdr = mbuf_ip_hdr(m);
-        dstip = ipv4_hdr->dst_addr;
-    }else if(eth->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
+    if(eth->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
         arph = mbuf_arphdr(m);
         dstip = arph->ar_tip;
     }else {
-        return NULL;
+        ipv4_hdr = mbuf_ip_hdr(m);
+        dstip = ipv4_hdr->dst_addr;
     }
-
+    
+    // if(eth->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
+    //     ipv4_hdr = mbuf_ip_hdr(m);
+    //     if(ipv4_hdr->next_proto_id == IPPROTO_UDP) {
+    //         struct rte_udp_hdr *udp_hdr = mbuf_udp_hdr(m);
+    //         printf("UDP Message src_port%d dst_port%d\n", ntohs(udp_hdr->src_port), ntohs(udp_hdr->dst_port));
+    //     }
+    // }
+    
+    
+    // ip.s_addr = dstip;
+    // printf("DSTIP Message for %s\n", inet_ntoa(ip));
     for(int i = 0; i < table->entry_num; i++) {
         if(dstip == table->entry[i].ipaddr) {
             // ipv4_hdr->dst_addr = table->entry[i].info->ipaddr;
@@ -223,14 +233,19 @@ int zcio_nic_receive(void *arg)
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_rx;
     int ret = 0;
-    
+    static uint64_t free_count;
+    static uint64_t recv_count;
+        
     while (!cfg.force_quit) {
         nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
         if (nb_rx == 0)
             continue;
+        recv_count += nb_rx;
+        // printf("Receive %lu packets from zcio client\n", recv_count);
         for(int i = 0; i < nb_rx; i++) {
             struct nic_info *info = find_next_port(bufs[i]);
             if(info == NULL) {
+                printf("No route info for %lu packet\n", ++free_count);
                 rte_pktmbuf_free(bufs[i]);
                 continue;
             }
