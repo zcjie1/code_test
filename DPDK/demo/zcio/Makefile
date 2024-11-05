@@ -47,9 +47,9 @@ virtio_dperf_server:
 	@docker run \
 		-it --rm  \
 		--privileged \
-		-v /tmp/sock0:/var/run/usvhost0 \
+		-v /var/run/openvswitch/vhost_sock/vhost1:/var/run/usvhost0 \
 		-v /dev/hugepages:/dev/hugepages \
-		-v ../virtio_user/virtio_dperf/server.conf:/tmp/server.conf \
+		-v ./virtio_dperf/server.conf:/tmp/server.conf \
 		zcio_dperf dperf \
 			-c /tmp/server.conf
 
@@ -57,9 +57,9 @@ virtio_dperf_client:
 	@docker run \
 		-it --rm  \
 		--privileged \
-		-v /tmp/sock0:/var/run/usvhost0 \
+		-v /var/run/openvswitch/vhost_sock/vhost2:/var/run/usvhost0 \
 		-v /dev/hugepages:/dev/hugepages \
-		-v ../virtio_user/virtio_dperf/client.conf:/tmp/client.conf \
+		-v ./virtio_dperf/client.conf:/tmp/client.conf \
 		zcio_dperf dperf \
 			-c /tmp/client.conf
 
