@@ -1,0 +1,4 @@
+out*
+perf.data 
+*.svg 
+*.log
