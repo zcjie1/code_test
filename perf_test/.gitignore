@@ -1,4 +1,5 @@
 out*
-perf.data 
+perf.data
+perf.data.old
 *.svg 
 *.log
