@@ -13,7 +13,6 @@
 #include <rte_lcore.h>
 #include <rte_alarm.h>
 
-#include "memctl.h"
 #include "env.h"
 #include "process.h"
 
@@ -53,8 +52,6 @@ int main(int argc, char *argv[])
 	rte_eal_remote_launch(phy_nic_send, NULL, cfg.curr_worker);
 	cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
 	rte_eal_remote_launch(phy_nic_receive, NULL, cfg.curr_worker);
-	// worker_id = rte_get_next_lcore(worker_id, 1, 0);
-	// rte_eal_remote_launch(statistic_output, NULL, worker_id);
 	
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

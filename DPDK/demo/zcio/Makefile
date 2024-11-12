@@ -16,10 +16,9 @@ host_app: clean
 	@sudo zcio_host/build/zcio_host \
 		-l 0-11 -m 4096\
 		--no-pci \
-		--vdev=eth_zcio0,server=1,server-iface=/tmp/zcio_server0 \
-		--vdev=eth_zcio1,server=1,server-iface=/tmp/zcio_server1 \
-		--vdev=eth_zcio2,server=1,server-iface=/tmp/zcio_server2 \
-		--file-prefix=host \
+		--vdev=eth_zcio0,server=1,info-name=zcio0,queues=1 \
+		--vdev=eth_zcio1,server=1,info-name=zcio1,queues=1 \
+		--file-prefix=zcio \
 
 zcio_dperf_server:
 	@docker run \

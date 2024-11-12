@@ -1,11 +1,4 @@
 #include "env.h"
-#include "memctl.h"
-
-// extern bool force_quit;
-// extern struct nic phy_nic;
-// extern struct nic zcio_nic;
-// extern struct route_table rtable;
-// extern struct rte_mempool *mbuf_pool;
 
 struct config cfg = {
 	.force_quit = false,
@@ -242,15 +235,10 @@ int zcio_host_init(int argc, char **argv)
 	
 	// 分配内存池
 	mbuf_pool = rte_pktmbuf_pool_create("share_pool", NUM_MBUFS * nb_ports,
-		MBUF_CACHE_SIZE, 0, ZCIO_MBUF_BUF_SIZE, rte_socket_id());
+		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 	cfg.mbuf_pool = mbuf_pool;
-	
-	// 内存共享管理
-	worker_id = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-	rte_eal_remote_launch(memory_manager, NULL, worker_id);
-	cfg.curr_worker = worker_id;
 	
 	// 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid) {
