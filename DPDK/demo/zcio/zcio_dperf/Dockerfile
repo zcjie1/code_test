@@ -5,6 +5,8 @@ FROM dpdk-base:latest
 # copy DPDK source code
 COPY ./* /usr/src/
 
+RUN mkdir -p /var/run/dpdk
+
 # install DPDK
 WORKDIR /usr/src/
 RUN tar -xf dperf.tar && \

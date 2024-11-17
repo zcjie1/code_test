@@ -4,6 +4,7 @@ FROM ubuntu:latest
 
 # system requirements
 ARG DEPENDENCIES="\
+    gcc-11 \
     pkg-config \
     build-essential \
     python3-pyelftools \

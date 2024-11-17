@@ -31,12 +31,13 @@ struct nic_info* find_next_port(struct rte_mbuf *m)
     
     
     // ip.s_addr = dstip;
-    // printf("DSTIP Message for %s\n", inet_ntoa(ip));
+    // printf("Message DSTIP  %s\n", inet_ntoa(ip));
     for(int i = 0; i < table->entry_num; i++) {
         if(dstip == table->entry[i].ipaddr) {
             // ipv4_hdr->dst_addr = table->entry[i].info->ipaddr;
             return table->entry[i].info;
         }
+        // printf("%u != %u\n", dstip, table->entry[i].ipaddr);
     }
 
     return NULL; 

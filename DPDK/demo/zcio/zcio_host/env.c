@@ -198,12 +198,13 @@ void route_table_init(void)
 	}
 	
 	// zcio 网卡路由
-	for(int i = 0; i < zcio_nic->nic_num - 1; i++) {
+	for(int i = 0; i < zcio_nic->nic_num; i++) {
 		entry = &rtable->entry[rtable->entry_num];
 		entry->ipaddr = zcio_nic->info[i].ipaddr;
 		entry->info = &zcio_nic->info[i];
 		rtable->entry_num++;
 	}
+	// printf("route table entry_num: %u\n", rtable->entry_num);
 }
 
 int zcio_host_init(int argc, char **argv)
