@@ -21,15 +21,6 @@ struct nic_info* find_next_port(struct rte_mbuf *m)
         dstip = ipv4_hdr->dst_addr;
     }
     
-    // if(eth->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
-    //     ipv4_hdr = mbuf_ip_hdr(m);
-    //     if(ipv4_hdr->next_proto_id == IPPROTO_UDP) {
-    //         struct rte_udp_hdr *udp_hdr = mbuf_udp_hdr(m);
-    //         printf("UDP Message src_port%d dst_port%d\n", ntohs(udp_hdr->src_port), ntohs(udp_hdr->dst_port));
-    //     }
-    // }
-    
-    
     // ip.s_addr = dstip;
     // printf("Message DSTIP  %s\n", inet_ntoa(ip));
     for(int i = 0; i < table->entry_num; i++) {
@@ -227,7 +218,7 @@ int phy_nic_send(void *arg __rte_unused)
     return 0;
 }
 
-int zcio_nic_receive(void *arg)
+int virtual_nic_receive(void *arg)
 {
     struct nic_info *nic = arg;
     uint16_t portid = nic->portid;
@@ -242,7 +233,6 @@ int zcio_nic_receive(void *arg)
         if (nb_rx == 0)
             continue;
         recv_count += nb_rx;
-        // printf("Receive %lu packets from zcio client\n", recv_count);
         for(int i = 0; i < nb_rx; i++) {
             struct nic_info *info = find_next_port(bufs[i]);
             if(info == NULL) {
@@ -258,7 +248,7 @@ int zcio_nic_receive(void *arg)
     }
 }
 
-int zcio_nic_send(void *arg)
+int virtual_nic_send(void *arg)
 {
     struct nic_info *nic = arg;
     uint16_t portid = nic->portid;
@@ -267,12 +257,23 @@ int zcio_nic_send(void *arg)
     uint16_t nb_tx;
     uint16_t ret = 0;
 
+    uint64_t start_tsc = 0;
+
+    uint64_t hz = rte_get_tsc_hz();
+    uint64_t tsc_per_us = hz / 1000000;
+    uint64_t tsc_per_tick = TICK_TIME * tsc_per_us;
+    
+    start_tsc = rte_rdtsc();
     while(!cfg.force_quit) {
+        nb_tx = rte_ring_count(tx_ring);
+        if(nb_tx < MAX_BURST_NUM && start_tsc + tsc_per_tick > rte_rdtsc())
+            continue;
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
         if(nb_tx == 0)
             continue;
-        // printf("Send %d packets to zcio client\n", nb_tx);
+        // printf("Send %d packets to virtual client\n", nb_tx);
         loop_tx(portid, 0, bufs, nb_tx);
+        start_tsc = rte_rdtsc();
     }
     
     nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);

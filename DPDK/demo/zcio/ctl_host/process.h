@@ -26,13 +26,16 @@ struct arphdr {
 #define mbuf_udp_hdr(m) \
     rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr*, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr))
 
-#define MAX_BURST_NUM 256
+#define MAX_BURST_NUM 64
+
+/* 单位: us */
+#define TICK_TIME 500
 
 // int route_process(void *arg __rte_unused);
 int phy_nic_receive(void *arg __rte_unused);
 int phy_nic_send(void *arg __rte_unused);
-int zcio_nic_receive(void *arg);
-int zcio_nic_send(void *arg);
+int virtual_nic_receive(void *arg);
+int virtual_nic_send(void *arg);
 int statistic_output(void *arg);
 
 #endif // !__PROCESS_H__

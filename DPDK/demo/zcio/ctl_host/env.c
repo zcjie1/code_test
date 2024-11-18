@@ -8,10 +8,10 @@ struct config cfg = {
 
 #define MIN_LCORES_NUM 4
 #define MIN_PORTS_NUM 2
-#define ZCIO_MBUF_BUF_SIZE 10240
+#define virtual_MBUF_BUF_SIZE 10240
 
-// zcio网卡IP地址分配
-char *zcio_ip_list[] = {
+// virtual网卡IP地址分配
+char *virtual_ip_list[] = {
 	"192.168.2.1", "192.168.2.2", "192.168.2.3", "192.168.2.4",
 	"192.168.2.5", "192.168.2.6", "192.168.2.7", "192.168.2.8",
 	"192.168.2.9", "192.168.2.10", "192.168.2.11", "192.168.2.12"
@@ -31,7 +31,7 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t nb_txd = TX_RING_SIZE;
 	int retval;
 	char device_name[256];
-	struct nic *zcio_nic = &cfg.zcio_nic;
+	struct nic *virtual_nic = &cfg.virtual_nic;
 	struct nic *phy_nic = &cfg.phy_nic;
 	struct rte_eth_rxconf rxconf;
 	struct rte_eth_txconf txconf;
@@ -85,8 +85,7 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			printf("Cannot setup receive queue %u for port %u\n",
 					r, port);
 			return retval;
-		}
-			
+		}	
 	}
 
 	// 配置发送队列
@@ -99,8 +98,7 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			printf("Cannot setup transmit queue %u for port %u\n",
 					r, port);
 			return retval;
-		}
-			
+		}	
 	}
 
 	retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
@@ -140,12 +138,13 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     printf("    Driver Name: %s\n\n", dev_info.driver_name);
 
 	// 统计网卡数量, 分配IP地址
-	if(strcmp(dev_info.driver_name, "net_zcio") == 0) {
-		zcio_nic->info[zcio_nic->nic_num].portid = port;
-		inet_pton(AF_INET, zcio_ip_list[zcio_nic->nic_num], &zcio_nic->info[zcio_nic->nic_num].ipaddr);
-		zcio_nic->info[zcio_nic->nic_num].ipaddr_str = zcio_ip_list[zcio_nic->nic_num];
-		nic_txring_init(&zcio_nic->info[zcio_nic->nic_num]);
-		zcio_nic->nic_num++;
+	if(strcmp(dev_info.driver_name, "net_zcio") == 0 || 
+		strcmp(dev_info.driver_name, "net_vhost") == 0) {
+		virtual_nic->info[virtual_nic->nic_num].portid = port;
+		inet_pton(AF_INET, virtual_ip_list[virtual_nic->nic_num], &virtual_nic->info[virtual_nic->nic_num].ipaddr);
+		virtual_nic->info[virtual_nic->nic_num].ipaddr_str = virtual_ip_list[virtual_nic->nic_num];
+		nic_txring_init(&virtual_nic->info[virtual_nic->nic_num]);
+		virtual_nic->nic_num++;
 	}else {
 		phy_nic->info[phy_nic->nic_num].portid = port;
 		inet_pton(AF_INET, phy_ip_list[phy_nic->nic_num], &phy_nic->info[phy_nic->nic_num].ipaddr);
@@ -183,7 +182,7 @@ void route_table_init(void)
 	uint16_t portid;
 	
 	struct route_table *rtable = &cfg.rtable;
-	struct nic *zcio_nic = &cfg.zcio_nic;
+	struct nic *virtual_nic = &cfg.virtual_nic;
 	struct nic *phy_nic = &cfg.phy_nic;
 
 	/* 初始化路由表 */
@@ -197,17 +196,17 @@ void route_table_init(void)
 		rtable->entry_num++;
 	}
 	
-	// zcio 网卡路由
-	for(int i = 0; i < zcio_nic->nic_num; i++) {
+	// virtual 网卡路由
+	for(int i = 0; i < virtual_nic->nic_num; i++) {
 		entry = &rtable->entry[rtable->entry_num];
-		entry->ipaddr = zcio_nic->info[i].ipaddr;
-		entry->info = &zcio_nic->info[i];
+		entry->ipaddr = virtual_nic->info[i].ipaddr;
+		entry->info = &virtual_nic->info[i];
 		rtable->entry_num++;
 	}
 	// printf("route table entry_num: %u\n", rtable->entry_num);
 }
 
-int zcio_host_init(int argc, char **argv)
+int virtual_host_init(int argc, char **argv)
 {
 	cfg.force_quit = false;
 	
@@ -271,8 +270,8 @@ int zcio_host_init(int argc, char **argv)
 	}
 
 	// 释放网卡发送队列
-	for(int i = 0; i < cfg.zcio_nic.nic_num; i++)
-		nic_txring_release(&cfg.zcio_nic.info[i]);
+	for(int i = 0; i < cfg.virtual_nic.nic_num; i++)
+		nic_txring_release(&cfg.virtual_nic.info[i]);
 	for(int i = 0; i < cfg.phy_nic.nic_num; i++)
 		nic_txring_release(&cfg.phy_nic.info[i]);
 	

@@ -1,4 +1,4 @@
-.PHONY: clean dpdk zcio scapy dpdk_install dpdk_env_image dpdk_base_image zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
+.PHONY: clean dpdk zcio scapy dpdk_install dpdk_env_image dpdk_base_image zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image ctl_host
 
 DPDK_ENV_PATH = /home/zcj/code_test/DPDK/demo/dpdk_env/
 DPDK_BASE_PATH = /home/zcj/code_test/DPDK/demo/dpdk_base/
@@ -6,19 +6,26 @@ ZCIO_DPERF_PATH = /home/zcj/code_test/DPDK/demo/zcio/zcio_dperf/
 
 all: dpdk zcio
 dpdk: dpdk_install dpdk_env_image dpdk_base_image
-zcio: zcio_host zcio_dperf_image
+zcio: ctl_host zcio_dperf_image
 # zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
 scapy:
 	@sudo python3 ./scapy/pktgen.py
 
-host_app: clean
-	@sudo zcio_host/build/zcio_host \
+zcio_host: clean
+	@sudo ctl_host/build/ctl_host \
 		-l 0-11 -m 4096\
 		--proc-type=primary \
 		--no-pci \
 		--vdev=eth_zcio0,server=1,info-name=zcio0,queues=1 \
 		--vdev=eth_zcio1,server=1,info-name=zcio1,queues=1 \
+
+vhost_host: clean
+	@sudo ctl_host/build/ctl_host \
+		-l 0-11 -m 4096\
+		--no-pci \
+		--vdev=eth_vhost0,iface=/tmp/vhost0 \
+		--vdev=eth_vhost1,iface=/tmp/vhost1 \
 
 zcio_dperf_server:
 	@docker run \
@@ -44,7 +51,7 @@ virtio_dperf_server:
 	@docker run \
 		-it --rm  \
 		--privileged \
-		-v /var/run/openvswitch/vhost_sock/vhost1:/var/run/usvhost0 \
+		-v /tmp/vhost0:/var/run/usvhost0 \
 		-v /dev/hugepages:/dev/hugepages \
 		-v ./virtio_dperf/server.conf:/tmp/server.conf \
 		zcio_dperf dperf \
@@ -54,7 +61,7 @@ virtio_dperf_client:
 	@docker run \
 		-it --rm  \
 		--privileged \
-		-v /var/run/openvswitch/vhost_sock/vhost2:/var/run/usvhost0 \
+		-v /tmp/vhost1:/var/run/usvhost0 \
 		-v /dev/hugepages:/dev/hugepages \
 		-v ./virtio_dperf/client.conf:/tmp/client.conf \
 		zcio_dperf dperf \
@@ -121,8 +128,8 @@ dpdk_base_image:
 	docker build -t dpdk-base . && \
 	docker image prune -f
 
-zcio_host:
-	cd zcio_host && \
+ctl_host:
+	cd ctl_host && \
 	make clean && \
 	make static
 
@@ -170,4 +177,5 @@ clean:
 	@sudo rm -rf /tmp/zcio_server*
 	@sudo rm -rf /tmp/memctl.sock
 	@sudo rm -f /dev/hugepages/*
+	@sudo rm -f /tmp/vhost*
 

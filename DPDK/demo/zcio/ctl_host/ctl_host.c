@@ -34,18 +34,18 @@ int main(int argc, char *argv[])
 	uint16_t portid;
 	unsigned int worker_id;
 	
-	ret = zcio_host_init(argc, argv);
+	ret = virtual_host_init(argc, argv);
 	if (ret < 0)
 		return -1;
 		
 	printf("\nStart Processing...\n\n");
 
 	// 分配工作核心任务
-	for(int i = 0; i < cfg.zcio_nic.nic_num; i++) {
+	for(int i = 0; i < cfg.virtual_nic.nic_num; i++) {
 		cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-		rte_eal_remote_launch(zcio_nic_send, &cfg.zcio_nic.info[i], cfg.curr_worker);
+		rte_eal_remote_launch(virtual_nic_send, &cfg.virtual_nic.info[i], cfg.curr_worker);
 		cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-		rte_eal_remote_launch(zcio_nic_receive, &cfg.zcio_nic.info[i], cfg.curr_worker);
+		rte_eal_remote_launch(virtual_nic_receive, &cfg.virtual_nic.info[i], cfg.curr_worker);
 		
 	}
 	cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
@@ -72,8 +72,8 @@ int main(int argc, char *argv[])
 	}
 
 	// 释放发送队列
-	for(int i = 0; i < cfg.zcio_nic.nic_num; i++)
-		nic_txring_release(&cfg.zcio_nic.info[i]);
+	for(int i = 0; i < cfg.virtual_nic.nic_num; i++)
+		nic_txring_release(&cfg.virtual_nic.info[i]);
 	for(int i = 0; i < cfg.phy_nic.nic_num; i++)
 		nic_txring_release(&cfg.phy_nic.info[i]);
 

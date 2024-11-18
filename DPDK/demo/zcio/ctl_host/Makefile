@@ -2,10 +2,10 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 # binary name
-APP = zcio_host
+APP = ctl_host
 
 # all source are stored in SRCS-y
-SRCS-y := zcio_host.c env.c process.c
+SRCS-y := ctl_host.c env.c process.c
 
 PKGCONF ?= pkg-config
 

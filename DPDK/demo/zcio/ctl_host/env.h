@@ -1,7 +1,7 @@
 #ifndef __ENV_H__
 #define __ENV_H__
 
-#define NUM_MBUFS 10240
+#define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 512
 
 #define RX_RING_NUM 1
@@ -41,7 +41,7 @@ struct config {
 	bool force_quit;
 	unsigned int curr_worker;
 	struct nic phy_nic;
-	struct nic zcio_nic;
+	struct nic virtual_nic;
 	struct route_table rtable;
 	struct rte_mempool *mbuf_pool;
 };
@@ -50,6 +50,6 @@ int port_init(uint16_t port, struct rte_mempool *mbuf_pool);
 void nic_txring_init(struct nic_info *nic);
 void nic_txring_release(struct nic_info *nic);
 void route_table_init(void);
-int zcio_host_init(int argc, char **argv);
+int virtual_host_init(int argc, char **argv);
 
 #endif // !__ENV_H__
