@@ -14,7 +14,7 @@ scapy:
 
 zcio_host: clean
 	@sudo ctl_host/build/ctl_host \
-		-l 0-11 -m 4096\
+		-l 32-39 -m 6144\
 		--proc-type=primary \
 		--no-pci \
 		--vdev=eth_zcio0,server=1,info-name=zcio0,queues=1 \
@@ -22,7 +22,7 @@ zcio_host: clean
 
 vhost_host: clean
 	@sudo ctl_host/build/ctl_host \
-		-l 0-11 -m 4096\
+		-l 32-39 -m 6144\
 		--no-pci \
 		--vdev=eth_vhost0,iface=/tmp/vhost0 \
 		--vdev=eth_vhost1,iface=/tmp/vhost1 \

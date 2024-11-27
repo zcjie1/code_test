@@ -1,8 +1,13 @@
 #include "process.h"
 #include <byteswap.h>
 #include <unistd.h>
+#include <stdatomic.h>
 
 extern struct config cfg;
+
+void flush_cache(char *start, char *end) {
+    __builtin___clear_cache(start, end);
+}
 
 struct nic_info* find_next_port(struct rte_mbuf *m)
 {
@@ -10,27 +15,43 @@ struct nic_info* find_next_port(struct rte_mbuf *m)
     struct rte_ether_hdr *eth = mbuf_eth_hdr(m);
     struct arphdr *arph = NULL;
     struct rte_ipv4_hdr *ipv4_hdr = NULL;
-    uint32_t dstip = 0;
-    // struct in_addr ip;
-    
+    // uint32_t srcip = 0;
+    uint32_t dstip =0;
+    // uint32_t ip_id;
+    struct in_addr sip;
+    struct in_addr dip;
+
     if(eth->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
         arph = mbuf_arphdr(m);
         dstip = arph->ar_tip;
     }else {
         ipv4_hdr = mbuf_ip_hdr(m);
         dstip = ipv4_hdr->dst_addr;
-    }
-    
-    // ip.s_addr = dstip;
-    // printf("Message DSTIP  %s\n", inet_ntoa(ip));
-    for(int i = 0; i < table->entry_num; i++) {
-        if(dstip == table->entry[i].ipaddr) {
-            // ipv4_hdr->dst_addr = table->entry[i].info->ipaddr;
-            return table->entry[i].info;
-        }
-        // printf("%u != %u\n", dstip, table->entry[i].ipaddr);
+        // ip_id = ipv4_hdr->packet_id;
     }
 
+    for(int i = 0; i < table->entry_num; i++) {
+        if(table->entry[i].ipaddr == dstip) {
+            return table->entry[i].info;
+        }
+    }
+
+    if(ipv4_hdr != NULL)
+        sip.s_addr = ipv4_hdr->src_addr;
+    dip.s_addr = dstip;
+    // atomic_thread_fence(memory_order_release);
+    printf("No route packet: %u——>%u: %u\n", 
+        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    usleep(50);
+    printf("No route packet: %u——>%u: %u\n", 
+        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    usleep(50);
+    printf("No route packet: %u——>%u: %u\n", 
+        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    usleep(50);
+    printf("No route packet: %u——>%u: %u\n", 
+        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    printf("No route packet: %s——>%s\n", inet_ntoa(sip), inet_ntoa(dip));
     return NULL; 
 }
 
@@ -225,24 +246,26 @@ int virtual_nic_receive(void *arg)
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_rx;
     int ret = 0;
-    static uint64_t free_count;
-    static uint64_t recv_count;
+    // static uint64_t free_count;
+    // static uint64_t recv_count;
         
     while (!cfg.force_quit) {
         nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
         if (nb_rx == 0)
             continue;
-        recv_count += nb_rx;
+        // recv_count += nb_rx;
         for(int i = 0; i < nb_rx; i++) {
             struct nic_info *info = find_next_port(bufs[i]);
             if(info == NULL) {
-                printf("No route info for %lu packet\n", ++free_count);
-                rte_pktmbuf_free(bufs[i]);
+                // printf("No route info for %lu packet\n", ++free_count);
+                // rte_pktmbuf_free(bufs[i]);
+                rte_mempool_put(cfg.mbuf_pool, (void *)bufs[i]);
                 continue;
             }
             ret = rte_ring_enqueue(info->tx_ring, bufs[i]);
             if(ret < 0) {
-                rte_pktmbuf_free(bufs[i]);
+                rte_mempool_put(cfg.mbuf_pool, (void *)bufs[i]);
+                // rte_pktmbuf_free(bufs[i]);
             }
         }
     }
@@ -257,23 +280,23 @@ int virtual_nic_send(void *arg)
     uint16_t nb_tx;
     uint16_t ret = 0;
 
-    uint64_t start_tsc = 0;
+    // uint64_t start_tsc = 0;
 
-    uint64_t hz = rte_get_tsc_hz();
-    uint64_t tsc_per_us = hz / 1000000;
-    uint64_t tsc_per_tick = TICK_TIME * tsc_per_us;
+    // uint64_t hz = rte_get_tsc_hz();
+    // uint64_t tsc_per_us = hz / 1000000;
+    // uint64_t tsc_per_tick = TICK_TIME * tsc_per_us;
     
-    start_tsc = rte_rdtsc();
+    // start_tsc = rte_rdtsc();
     while(!cfg.force_quit) {
-        nb_tx = rte_ring_count(tx_ring);
-        if(nb_tx < MAX_BURST_NUM && start_tsc + tsc_per_tick > rte_rdtsc())
-            continue;
+        // nb_tx = rte_ring_count(tx_ring);
+        // if(nb_tx < 8)
+        //     continue;
         nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);
         if(nb_tx == 0)
             continue;
         // printf("Send %d packets to virtual client\n", nb_tx);
         loop_tx(portid, 0, bufs, nb_tx);
-        start_tsc = rte_rdtsc();
+        // start_tsc = rte_rdtsc();
     }
     
     nb_tx = rte_ring_dequeue_burst(tx_ring, (void **)bufs, MAX_BURST_NUM, NULL);

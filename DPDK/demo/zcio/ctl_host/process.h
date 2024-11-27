@@ -29,7 +29,7 @@ struct arphdr {
 #define MAX_BURST_NUM 64
 
 /* 单位: us */
-#define TICK_TIME 500
+#define TICK_TIME 50
 
 // int route_process(void *arg __rte_unused);
 int phy_nic_receive(void *arg __rte_unused);

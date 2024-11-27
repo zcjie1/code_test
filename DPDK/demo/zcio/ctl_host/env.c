@@ -161,11 +161,11 @@ void nic_txring_init(struct nic_info *nic)
 	nic->tx_name = (char *)malloc(64);
 	sprintf(nic->tx_name, "tx_ring_%d", nic->portid);
 	if(nic->portid == 0) {
-		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, rte_socket_id(),
-			RING_F_MP_HTS_ENQ| RING_F_SC_DEQ);
+		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
+			rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ);
 	}else {
-		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, rte_socket_id(),
-			RING_F_SP_ENQ| RING_F_SC_DEQ);
+		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
+			rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ);
 	}
 }
 
@@ -206,6 +206,32 @@ void route_table_init(void)
 	// printf("route table entry_num: %u\n", rtable->entry_num);
 }
 
+void mp_obj_init(struct rte_mempool *mp, void *opaque, 
+	void *obj, unsigned int obj_idx)
+{
+	struct rte_mbuf *mbuf = obj;
+	char *data = (char *)(mbuf + 1);
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	mbp_priv = (struct rte_pktmbuf_pool_private *)rte_mempool_get_priv(mp);
+	mbp_priv->mbuf_data_room_size = DEFAULT_PKTMBUF_SIZE;
+	mbuf->buf_addr = (void *)data;
+	mbuf->buf_iova = rte_mempool_virt2iova(data);
+	mbuf->buf_len = DEFAULT_PKTMBUF_SIZE;
+	mbuf->data_off = 0;
+	mbuf->refcnt = 1;
+	mbuf->nb_segs = 1;
+	mbuf->next = NULL;
+	mbuf->pool = mp;
+	mbuf->pkt_len = 0;
+	mbuf->tx_offload = 0;
+	mbuf->vlan_tci = 0;
+	mbuf->vlan_tci_outer = 0;
+	mbuf->ol_flags = 0;
+	mbuf->port = RTE_MBUF_PORT_INVALID;
+	mbuf->packet_type = 0;
+	mbuf->data_len = 0;
+}
+
 int virtual_host_init(int argc, char **argv)
 {
 	cfg.force_quit = false;
@@ -234,11 +260,15 @@ int virtual_host_init(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
 	
 	// 分配内存池
-	mbuf_pool = rte_pktmbuf_pool_create("share_pool", NUM_MBUFS * nb_ports,
-		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	mbuf_pool = rte_mempool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
+		sizeof(struct rte_mbuf) + DEFAULT_PKTMBUF_SIZE, MBUF_CACHE_SIZE, 8, 
+				NULL, NULL, mp_obj_init, NULL, rte_socket_id(), 0);
+	// mbuf_pool = rte_pktmbuf_pool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
+	// 	MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 	cfg.mbuf_pool = mbuf_pool;
+	// printf("%u\n", mbuf_pool->flags);
 	
 	// 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid) {
