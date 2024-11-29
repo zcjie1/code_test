@@ -261,7 +261,7 @@ int virtual_host_init(int argc, char **argv)
 	
 	// 分配内存池
 	mbuf_pool = rte_mempool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
-		sizeof(struct rte_mbuf) + DEFAULT_PKTMBUF_SIZE, MBUF_CACHE_SIZE, 8, 
+		sizeof(struct rte_mbuf) + DEFAULT_PKTMBUF_SIZE, 0, 8, 
 				NULL, NULL, mp_obj_init, NULL, rte_socket_id(), 0);
 	// mbuf_pool = rte_pktmbuf_pool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
 	// 	MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());

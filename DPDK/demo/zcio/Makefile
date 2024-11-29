@@ -178,4 +178,5 @@ clean:
 	@sudo rm -rf /tmp/memctl.sock
 	@sudo rm -f /dev/hugepages/*
 	@sudo rm -f /tmp/vhost*
+	@sudo rm -rf /var/run/dpdk/rte
 
