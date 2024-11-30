@@ -36,22 +36,22 @@ struct nic_info* find_next_port(struct rte_mbuf *m)
         }
     }
 
-    if(ipv4_hdr != NULL)
-        sip.s_addr = ipv4_hdr->src_addr;
-    dip.s_addr = dstip;
+    // if(ipv4_hdr != NULL)
+    //     sip.s_addr = ipv4_hdr->src_addr;
+    // dip.s_addr = dstip;
     // atomic_thread_fence(memory_order_release);
-    printf("No route packet: %u——>%u: %u\n", 
-        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    usleep(50);
-    printf("No route packet: %u——>%u: %u\n", 
-        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    usleep(50);
-    printf("No route packet: %u——>%u: %u\n", 
-        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    usleep(50);
-    printf("No route packet: %u——>%u: %u\n", 
-        (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    printf("No route packet: %s——>%s\n", inet_ntoa(sip), inet_ntoa(dip));
+    // printf("No route packet: %u——>%u: %u\n", 
+    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    // usleep(50);
+    // printf("No route packet: %u——>%u: %u\n", 
+    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    // usleep(50);
+    // printf("No route packet: %u——>%u: %u\n", 
+    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    // usleep(50);
+    // printf("No route packet: %u——>%u: %u\n", 
+    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
+    // printf("No route packet: %s——>%s\n", inet_ntoa(sip), inet_ntoa(dip));
     return NULL; 
 }
 
@@ -199,13 +199,17 @@ static void loop_tx(uint16_t port_id, uint16_t queue_id,
 {
 	uint16_t ret = 0;
 	uint16_t nb_sent = 0;
+    uint16_t count = 0;
 
 	ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts, nb_pkts);
-	while(ret < nb_pkts && !cfg.force_quit) {
+	while(ret < nb_pkts && !cfg.force_quit && count < 8) {
+        count++;
 		nb_sent += ret;
 		nb_pkts -= ret;
 		ret = rte_eth_tx_burst(port_id, queue_id, tx_pkts + nb_sent, nb_pkts);
 	}
+
+    rte_pktmbuf_free_bulk(tx_pkts + nb_sent + ret, nb_pkts - ret);
 }
 
 int phy_nic_send(void *arg __rte_unused)
@@ -258,14 +262,14 @@ int virtual_nic_receive(void *arg)
             struct nic_info *info = find_next_port(bufs[i]);
             if(info == NULL) {
                 // printf("No route info for %lu packet\n", ++free_count);
-                // rte_pktmbuf_free(bufs[i]);
-                rte_mempool_put(cfg.mbuf_pool, (void *)bufs[i]);
+                rte_pktmbuf_free(bufs[i]);
+                // rte_mempool_put(cfg.mbuf_pool, (void *)bufs[i]);
                 continue;
             }
             ret = rte_ring_enqueue(info->tx_ring, bufs[i]);
             if(ret < 0) {
-                rte_mempool_put(cfg.mbuf_pool, (void *)bufs[i]);
-                // rte_pktmbuf_free(bufs[i]);
+                // rte_mempool_put(cfg.mbuf_pool, (void *)bufs[i]);
+                rte_pktmbuf_free(bufs[i]);
             }
         }
     }

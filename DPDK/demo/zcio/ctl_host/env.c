@@ -162,10 +162,10 @@ void nic_txring_init(struct nic_info *nic)
 	sprintf(nic->tx_name, "tx_ring_%d", nic->portid);
 	if(nic->portid == 0) {
 		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
-			rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ);
+			rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
 	}else {
 		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
-			rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ);
+			rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
 	}
 }
 
@@ -260,11 +260,11 @@ int virtual_host_init(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
 	
 	// 分配内存池
-	mbuf_pool = rte_mempool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
-		sizeof(struct rte_mbuf) + DEFAULT_PKTMBUF_SIZE, 0, 8, 
-				NULL, NULL, mp_obj_init, NULL, rte_socket_id(), 0);
-	// mbuf_pool = rte_pktmbuf_pool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
-	// 	MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());
+	// mbuf_pool = rte_mempool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
+	// 	sizeof(struct rte_mbuf) + DEFAULT_PKTMBUF_SIZE, 0, 8, 
+	// 			NULL, NULL, mp_obj_init, NULL, rte_socket_id(), 0);
+	mbuf_pool = rte_pktmbuf_pool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
+		MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 	cfg.mbuf_pool = mbuf_pool;

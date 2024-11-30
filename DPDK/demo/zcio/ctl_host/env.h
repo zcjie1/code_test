@@ -2,7 +2,7 @@
 #define __ENV_H__
 
 #define NUM_MBUFS (8192 * 2)
-#define MBUF_CACHE_SIZE 512
+#define MBUF_CACHE_SIZE 0
 #define DEFAULT_PKTMBUF_SIZE 10240
 
 #define RX_RING_NUM 1
