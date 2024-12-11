@@ -1,4 +1,4 @@
-.PHONY: clean dpdk zcio scapy dpdk_install dpdk_env_image dpdk_base_image zcio_host zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image ctl_host
+.PHONY: clean dpdk zcio scapy dpdk_install dpdk_env_image dpdk_base_image zcio_host ctl_host
 
 DPDK_ENV_PATH = /home/zcj/code_test/DPDK/demo/dpdk_env/
 DPDK_BASE_PATH = /home/zcj/code_test/DPDK/demo/dpdk_base/
@@ -7,7 +7,6 @@ ZCIO_DPERF_PATH = /home/zcj/code_test/DPDK/demo/zcio/zcio_dperf/
 all: dpdk zcio
 dpdk: dpdk_install dpdk_env_image dpdk_base_image
 zcio: ctl_host zcio_dperf_image
-# zcio_docker_image zcio_ipfilter_image zcio_log_image zcio_reply_image
 
 scapy:
 	@sudo python3 ./scapy/pktgen.py
@@ -143,34 +142,6 @@ zcio_dperf_image:
 		dperf-custom && \
 	cd $(ZCIO_DPERF_PATH) && \
 	docker build -t zcio_dperf . && \
-	docker image prune -f
-
-zcio_docker_image:
-	cd zcio_docker && \
-	make clean && \
-	make static && \
-	docker build -t zcio_docker . && \
-	docker image prune -f
-
-zcio_ipfilter_image:
-	cd zcio_ipfilter && \
-	make clean && \
-	make static && \
-	docker build -t zcio_ipfilter . && \
-	docker image prune -f
-
-zcio_log_image:
-	cd zcio_log && \
-	make clean && \
-	make static && \
-	docker build -t zcio_log . && \
-	docker image prune -f
-
-zcio_reply_image:
-	cd zcio_reply && \
-	make clean && \
-	make static && \
-	docker build -t zcio_reply . && \
 	docker image prune -f
 
 clean:
