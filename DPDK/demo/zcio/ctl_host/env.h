@@ -3,7 +3,7 @@
 
 #define NUM_MBUFS (8192 * 2)
 #define MBUF_CACHE_SIZE 0
-#define DEFAULT_PKTMBUF_SIZE 10240
+#define DEFAULT_PKTMBUF_SIZE (2048 + 128)
 
 #define RX_RING_NUM 1
 #define TX_RING_NUM 1

@@ -35,23 +35,7 @@ struct nic_info* find_next_port(struct rte_mbuf *m)
             return table->entry[i].info;
         }
     }
-
-    // if(ipv4_hdr != NULL)
-    //     sip.s_addr = ipv4_hdr->src_addr;
-    // dip.s_addr = dstip;
-    // atomic_thread_fence(memory_order_release);
-    // printf("No route packet: %u——>%u: %u\n", 
-    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    // usleep(50);
-    // printf("No route packet: %u——>%u: %u\n", 
-    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    // usleep(50);
-    // printf("No route packet: %u——>%u: %u\n", 
-    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    // usleep(50);
-    // printf("No route packet: %u——>%u: %u\n", 
-    //     (uint32_t)ipv4_hdr->src_addr, (uint32_t)ipv4_hdr->dst_addr, (uint16_t)ipv4_hdr->packet_id);
-    // printf("No route packet: %s——>%s\n", inet_ntoa(sip), inet_ntoa(dip));
+    
     return NULL; 
 }
 
