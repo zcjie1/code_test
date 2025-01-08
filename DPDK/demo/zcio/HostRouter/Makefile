@@ -2,10 +2,11 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 # binary name
-APP = ctl_host
+APP = router
 
 # all source are stored in SRCS-y
-SRCS-y := ctl_host.c env.c process.c
+SRC_DIR = src
+SRCS-y := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/**/*.c)
 
 PKGCONF ?= pkg-config
 

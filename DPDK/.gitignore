@@ -6,3 +6,4 @@ ovs/
 f-stack/
 UDPDK/'
 dpdk-custom/
+compile_commands.json

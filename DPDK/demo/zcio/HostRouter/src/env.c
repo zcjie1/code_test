@@ -1,131 +1,102 @@
 #include "env.h"
 
-struct config cfg = {
-	.force_quit = false,
+struct config global_cfg = {
+	.force_quit = false, 
 	.curr_worker = -1,
 	.mbuf_pool = NULL,
+	.iniparam = NULL,
 };
 
 #define MIN_LCORES_NUM 4
 #define MIN_PORTS_NUM 2
-#define virtual_MBUF_BUF_SIZE 10240
 
-// virtual网卡IP地址分配
-char *virtual_ip_list[] = {
-	"192.168.2.1", "192.168.2.2", "192.168.2.3", "192.168.2.4",
-	"192.168.2.5", "192.168.2.6", "192.168.2.7", "192.168.2.8",
-	"192.168.2.9", "192.168.2.10", "192.168.2.11", "192.168.2.12"
-};
-
-// 物理网卡IP地址分配
-char *phy_ip_list[] = {
-	"10.10.4.119",
-};
-
-// 网卡初始化
-int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
+static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
-	struct rte_eth_conf port_conf;
+	struct rte_eth_conf port_conf = {0};
 	struct rte_eth_dev_info dev_info;
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
-	int retval;
+	int ret;
 	char device_name[256];
-	struct nic *virtual_nic = &cfg.virtual_nic;
-	struct nic *phy_nic = &cfg.phy_nic;
+	struct nic *virtual_nic = &global_cfg.virtual_nic;
+	struct nic *phy_nic = &global_cfg.phy_nic;
 	struct rte_eth_rxconf rxconf;
 	struct rte_eth_txconf txconf;
 	
-	printf("Initializing port %u... \n", port);
-	fflush(stdout);
+	printf("Initializing port %u...\n", port);
 
-	if (!rte_eth_dev_is_valid_port(port))
+	if (!rte_eth_dev_is_valid_port(port)) {
+		printf("%s: Invalid port %u\n", __func__, port);
 		return -1;
-
-	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
-
-	// 获取网卡信息
-	retval = rte_eth_dev_info_get(port, &dev_info);
-	if (retval < 0) {
-		printf("Error during getting device (port %u) info: %s\n",
-				port, strerror(-retval));
-		return retval;
 	}
 
-	// 配置port_conf
+	ret = rte_eth_dev_info_get(port, &dev_info);
+	if (ret != 0) {
+		printf("Error during getting device (port %u) info: %s\n",
+				port, strerror(-ret));
+		return ret;
+	}
+
 	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_SCATTER)
 		port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 
-	// 初始化网卡驱动
-	retval = rte_eth_dev_configure(port, RX_RING_NUM, TX_RING_NUM, &port_conf);
-	if (retval < 0) {
+	ret = rte_eth_dev_configure(port, RX_RING_NUM, TX_RING_NUM, &port_conf);
+	if (ret < 0) {
 		printf("Cannot configure device: err=%d, port=%u\n",
-				retval, port);
-		return retval;
+				ret, port);
+		return ret;
 	}
-		
-	// 设置每个ring的描述符数量
-	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
-	if (retval < 0) {
+	
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
+	if (ret < 0) {
 		printf("Cannot adjust number of descriptors: err=%d, port=%u\n",
-				retval, port);
-		return retval;
+				ret, port);
+		return ret;
 	}
 		
-	// 设置每个receive ring对应的内存池
 	int port_socket = rte_eth_dev_socket_id(port);
 	rxconf = dev_info.default_rxconf;
 	rxconf.offloads = port_conf.rxmode.offloads;
 	for (int r = 0; r < RX_RING_NUM; r++) {
-		retval = rte_eth_rx_queue_setup(port, r, nb_rxd,
+		ret = rte_eth_rx_queue_setup(port, r, nb_rxd,
 				port_socket, &rxconf, mbuf_pool);
-		if (retval < 0) {
-			printf("Cannot setup receive queue %u for port %u\n",
-					r, port);
-			return retval;
+		if (ret < 0) {
+			printf("Cannot setup receive queue %u for port %u\n", r, port);
+			return ret;
 		}	
 	}
 
-	// 配置发送队列
 	txconf = dev_info.default_txconf;
 	txconf.offloads = port_conf.txmode.offloads;
 	for (int r = 0; r < TX_RING_NUM; r++) {
-		retval = rte_eth_tx_queue_setup(port, r, nb_txd,
+		ret = rte_eth_tx_queue_setup(port, r, nb_txd,
 				port_socket, &txconf);
-		if (retval < 0) {
-			printf("Cannot setup transmit queue %u for port %u\n",
-					r, port);
-			return retval;
+		if (ret < 0) {
+			printf("Cannot setup transmit queue %u for port %u\n", r, port);
+			return ret;
 		}	
 	}
 
-	retval = rte_eth_dev_set_ptypes(port, RTE_PTYPE_UNKNOWN, NULL, 0);
-	if (retval < 0)
-		printf("Port %u, Failed to disable Ptype parsing\n", port);
-
-	// 启动网卡
-	retval = rte_eth_dev_start(port);
-	if (retval < 0) {
-		printf("Cannot start device: err=%d, port=%u\n",
-				retval, port);
-		return retval;
+	ret = rte_eth_dev_start(port);
+	if (ret < 0) {
+		printf("Cannot start device: err=%d, port=%u\n", ret, port);
+		return ret;
 	}
 		
-	retval = rte_eth_promiscuous_enable(port);
-	if (retval < 0) {
-		printf("Cannot enable promiscuous mode: err=%d, port=%u\n",
-				retval, port);
-		return retval;
+	ret = rte_eth_promiscuous_enable(port);
+	if (ret < 0) {
+		printf("Cannot enable promiscuous mode: err=%d, port=%u\n", ret, port);
+		return ret;
 	}
 		
 	// 输出网卡信息
 	struct rte_ether_addr addr;
-	retval = rte_eth_macaddr_get(port, &addr);
-	if (retval < 0) {
+	ret = rte_eth_macaddr_get(port, &addr);
+	if (ret < 0) {
 		printf("Error reading MAC address for port %d\n", port);
-		return retval;
+		return ret;
 	}
 
 	printf("Port %u: \n", port);
@@ -181,9 +152,9 @@ void route_table_init(void)
 	uint32_t ipaddr;
 	uint16_t portid;
 	
-	struct route_table *rtable = &cfg.rtable;
-	struct nic *virtual_nic = &cfg.virtual_nic;
-	struct nic *phy_nic = &cfg.phy_nic;
+	struct route_table *rtable = &global_cfg.rtable;
+	struct nic *virtual_nic = &global_cfg.virtual_nic;
+	struct nic *phy_nic = &global_cfg.phy_nic;
 
 	/* 初始化路由表 */
 	entry = &rtable->entry[rtable->entry_num];
@@ -206,36 +177,24 @@ void route_table_init(void)
 	// printf("route table entry_num: %u\n", rtable->entry_num);
 }
 
-void mp_obj_init(struct rte_mempool *mp, void *opaque, 
-	void *obj, unsigned int obj_idx)
+static void parse_inifile(int _argc, char **_argv)
 {
-	struct rte_mbuf *mbuf = obj;
-	char *data = (char *)(mbuf + 1);
-	struct rte_pktmbuf_pool_private *mbp_priv;
-	mbp_priv = (struct rte_pktmbuf_pool_private *)rte_mempool_get_priv(mp);
-	mbp_priv->mbuf_data_room_size = DEFAULT_PKTMBUF_SIZE;
-	mbuf->buf_addr = (void *)data;
-	mbuf->buf_iova = rte_mempool_virt2iova(data);
-	mbuf->buf_len = DEFAULT_PKTMBUF_SIZE;
-	mbuf->data_off = 0;
-	mbuf->refcnt = 1;
-	mbuf->nb_segs = 1;
-	mbuf->next = NULL;
-	mbuf->pool = mp;
-	mbuf->pkt_len = 0;
-	mbuf->tx_offload = 0;
-	mbuf->vlan_tci = 0;
-	mbuf->vlan_tci_outer = 0;
-	mbuf->ol_flags = 0;
-	mbuf->port = RTE_MBUF_PORT_INVALID;
-	mbuf->packet_type = 0;
-	mbuf->data_len = 0;
+	global_cfg.iniparam = iniparser_load(_argv[1]);
+
+	int argc = 0;
+	char **argv = global_cfg.dpdk_argv;
+	argv[argc++] = _argv[0];
+
+	
 }
 
 int virtual_host_init(int argc, char **argv)
-{
-	cfg.force_quit = false;
+{	
+	if(argc < 2)
+		rte_exit(EXIT_FAILURE, "Error: No config file\n");
 	
+	parse_inifile(argc, argv);
+
 	int ret = 0;
 	uint16_t portid;
 	unsigned int nb_lcores;
@@ -250,32 +209,28 @@ int virtual_host_init(int argc, char **argv)
 	
 	// 工作核心数量
 	nb_lcores = rte_lcore_count();
+	printf("Lcores Number: %u\n", nb_lcores);
 	if (nb_lcores < MIN_LCORES_NUM)
-		rte_exit(EXIT_FAILURE, "Error: The number of work cores is insufficient\n");
+		rte_exit(EXIT_FAILURE, "Error: Number of work cores is insufficient\n");
 	
 	// 网卡数量
 	nb_ports = rte_eth_dev_count_avail();
-	printf("ports number: %u\n", nb_ports);
+	printf("Ports Number: %u\n", nb_ports);
 	if (nb_ports < MIN_PORTS_NUM)
-		rte_exit(EXIT_FAILURE, "Error: The number of ports is insufficient\n");
+		rte_exit(EXIT_FAILURE, "Error: Number of ports is insufficient\n");
 	
-	// 分配内存池
-	// mbuf_pool = rte_mempool_create("share_pool", 4*NUM_MBUFS*nb_ports, 
-	// 	sizeof(struct rte_mbuf) + DEFAULT_PKTMBUF_SIZE, 0, 8, 
-	// 			NULL, NULL, mp_obj_init, NULL, rte_socket_id(), 0);
-	// mbuf_pool_0 兼容 f-stack
+	// 分配内存池, mbuf_pool_0 兼容 f-stack
 	mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool_0", 16*NUM_MBUFS*nb_ports, 
 		MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
-	cfg.mbuf_pool = mbuf_pool;
-	// printf("%u\n", mbuf_pool->flags);
+	global_cfg.mbuf_pool = mbuf_pool;
 	
 	// 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid) {
 		ret = port_init(portid, mbuf_pool);
 		if(ret != 0) {
-			cfg.force_quit = true;
+			global_cfg.force_quit = true;
 			printf("\nError: Fail to init port %"PRIu16"\n", portid);
 			goto out;
 		}
@@ -301,10 +256,10 @@ int virtual_host_init(int argc, char **argv)
 	}
 
 	// 释放网卡发送队列
-	for(int i = 0; i < cfg.virtual_nic.nic_num; i++)
-		nic_txring_release(&cfg.virtual_nic.info[i]);
-	for(int i = 0; i < cfg.phy_nic.nic_num; i++)
-		nic_txring_release(&cfg.phy_nic.info[i]);
+	for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++)
+		nic_txring_release(&global_cfg.virtual_nic.info[i]);
+	for(int i = 0; i < global_cfg.phy_nic.nic_num; i++)
+		nic_txring_release(&global_cfg.phy_nic.info[i]);
 	
 	// 释放内存池
 	rte_mempool_free(mbuf_pool);

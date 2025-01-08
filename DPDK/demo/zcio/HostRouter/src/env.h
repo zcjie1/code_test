@@ -13,24 +13,26 @@
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include "iniparser/dictionary.h"
+#include "iniparser/iniparser.h"
 
 struct nic_info{
 	uint16_t portid;
 	char *ipaddr_str;
-	uint32_t ipaddr; // 大端序IP地址
-	char *tx_name; // malloc'd
+	uint32_t ipaddr; // big-endian ipaddr
+	char *tx_name; // malloc'd string
 	struct rte_ring *tx_ring;
 };
 
 #define MAX_NIC_NUM 16
 struct nic{
-	int nic_num; // 网卡数量
+	int nic_num;
 	struct nic_info info[MAX_NIC_NUM];
 };
 
 struct route_entry {
-	uint32_t ipaddr; // 大端序IP地址, 数据包的原dst地址
-	struct nic_info *info; // 下一跳的端口信息
+	uint32_t ipaddr; // big-endian destination ipaddr
+	struct nic_info *info; // next hop interface
 };
 
 struct route_table {
@@ -40,14 +42,21 @@ struct route_table {
 
 struct config {
 	bool force_quit;
+	dictionary *iniparam; 	// config file content
 	unsigned int curr_worker;
+
+	/* nic info */
 	struct nic phy_nic;
 	struct nic virtual_nic;
-	struct route_table rtable;
+
+	/* dpdk parameter */
+	int dpdk_argc;
+	char *dpdk_argv[32];
+
 	struct rte_mempool *mbuf_pool;
+	struct route_table rtable;
 };
 
-int port_init(uint16_t port, struct rte_mempool *mbuf_pool);
 void nic_txring_init(struct nic_info *nic);
 void nic_txring_release(struct nic_info *nic);
 void route_table_init(void);

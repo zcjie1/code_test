@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -16,7 +15,7 @@
 #include "env.h"
 #include "process.h"
 
-extern struct config cfg;
+extern struct config global_cfg;
 
 // 信号处理函数
 static void signal_handler(int signum)
@@ -24,7 +23,7 @@ static void signal_handler(int signum)
 	if (signum == SIGINT || signum == SIGTERM) {
 		printf("\n\nSignal %d received, preparing to exit...\n",
 				signum);
-		cfg.force_quit = true;
+		global_cfg.force_quit = true;
 	}
 }
 
@@ -41,17 +40,17 @@ int main(int argc, char *argv[])
 	printf("\nStart Processing...\n\n");
 
 	// 分配工作核心任务
-	for(int i = 0; i < cfg.virtual_nic.nic_num; i++) {
-		cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-		rte_eal_remote_launch(virtual_nic_send, &cfg.virtual_nic.info[i], cfg.curr_worker);
-		cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-		rte_eal_remote_launch(virtual_nic_receive, &cfg.virtual_nic.info[i], cfg.curr_worker);
+	for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++) {
+		global_cfg.curr_worker = rte_get_next_lcore(global_cfg.curr_worker, 1, 0);
+		rte_eal_remote_launch(virtual_nic_send, &global_cfg.virtual_nic.info[i], global_cfg.curr_worker);
+		global_cfg.curr_worker = rte_get_next_lcore(global_cfg.curr_worker, 1, 0);
+		rte_eal_remote_launch(virtual_nic_receive, &global_cfg.virtual_nic.info[i], global_cfg.curr_worker);
 		
 	}
-	cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-	rte_eal_remote_launch(phy_nic_send, NULL, cfg.curr_worker);
-	cfg.curr_worker = rte_get_next_lcore(cfg.curr_worker, 1, 0);
-	rte_eal_remote_launch(phy_nic_receive, NULL, cfg.curr_worker);
+	global_cfg.curr_worker = rte_get_next_lcore(global_cfg.curr_worker, 1, 0);
+	rte_eal_remote_launch(phy_nic_send, NULL, global_cfg.curr_worker);
+	global_cfg.curr_worker = rte_get_next_lcore(global_cfg.curr_worker, 1, 0);
+	rte_eal_remote_launch(phy_nic_receive, NULL, global_cfg.curr_worker);
 	
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
@@ -72,12 +71,12 @@ int main(int argc, char *argv[])
 	}
 
 	// 释放发送队列
-	for(int i = 0; i < cfg.virtual_nic.nic_num; i++)
-		nic_txring_release(&cfg.virtual_nic.info[i]);
-	for(int i = 0; i < cfg.phy_nic.nic_num; i++)
-		nic_txring_release(&cfg.phy_nic.info[i]);
+	for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++)
+		nic_txring_release(&global_cfg.virtual_nic.info[i]);
+	for(int i = 0; i < global_cfg.phy_nic.nic_num; i++)
+		nic_txring_release(&global_cfg.phy_nic.info[i]);
 
-	rte_mempool_free(cfg.mbuf_pool);
+	rte_mempool_free(global_cfg.mbuf_pool);
 
 	// eal环境释放
 	rte_eal_cleanup();
