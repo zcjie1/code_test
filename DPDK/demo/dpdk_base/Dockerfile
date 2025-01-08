@@ -9,10 +9,10 @@ COPY ./* /usr/src/dpdk/
 WORKDIR /usr/src/dpdk/
 RUN tar -xf custom_dpdk.tar && \
     rm -rf custom_dpdk.tar && \
-    cd dpdk-custom && \
-    meson setup build && \
+    cd dpdk && \
+    meson -Ddisable_libs=flow_classify -Ddisable_drivers=crypto/openssl build && \
     cd build && \
-    ninja && \
+    ninja -j32 && \
     meson install && \
     ldconfig
 

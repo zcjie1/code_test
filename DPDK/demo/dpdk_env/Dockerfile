@@ -15,6 +15,7 @@ ARG DEPENDENCIES="\
     libarchive13 \
     iproute2 \
     libbpf-dev \
+    libssl-dev \
 "
 
 RUN apt-get update && \
