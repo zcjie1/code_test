@@ -7,3 +7,5 @@ f-stack/
 UDPDK/'
 dpdk-custom/
 compile_commands.json
+*.tar
+build/

@@ -42,16 +42,13 @@ struct route_table {
 
 struct config {
 	bool force_quit;
-	dictionary *iniparam; 	// config file content
 	unsigned int curr_worker;
 
 	/* nic info */
 	struct nic phy_nic;
 	struct nic virtual_nic;
-
-	/* dpdk parameter */
-	int dpdk_argc;
-	char *dpdk_argv[32];
+	uint32_t pdev_ipaddr_table[RTE_MAX_ETHPORTS]; // big-endian ipaddr
+	uint32_t vdev_ipaddr_table[RTE_MAX_ETHPORTS]; // big-endian ipaddr
 
 	struct rte_mempool *mbuf_pool;
 	struct route_table rtable;

@@ -9,18 +9,22 @@ COMPILE_COMMANDS = /home/zcj/code_test/DPDK/compile_commands.json
 
 all: dpdk zcio
 dpdk: dpdk_env_image dpdk_base_image
-zcio: router zcio_dperf_image
+zcio: zcio_dperf_image router
 
 scapy:
 	@sudo python3 ./scapy/pktgen.py
 
+# zcio_host: clean
+# 	@sudo HostRouter/build/router \
+# 		-l 38-45 -m 6144\
+# 		--proc-type=primary \
+# 		--no-pci --no-shvdev \
+# 		--vdev=eth_zcio0,server=1,info-name=zcio0,queues=1 \
+# 		--vdev=eth_zcio1,server=1,info-name=zcio1,queues=1 \
+
 zcio_host: clean
 	@sudo HostRouter/build/router \
-		-l 38-45 -m 6144\
-		--proc-type=primary \
-		--no-pci --no-shvdev \
-		--vdev=eth_zcio0,server=1,info-name=zcio0,queues=1 \
-		--vdev=eth_zcio1,server=1,info-name=zcio1,queues=1 \
+		HostRouter/config.ini
 
 vhost_host: clean
 	@sudo HostRouter/build/router \

@@ -1,14 +1,13 @@
 #include "env.h"
 
+#define MIN_LCORES_NUM 4
+#define MIN_PORTS_NUM 2
+
 struct config global_cfg = {
 	.force_quit = false, 
 	.curr_worker = -1,
 	.mbuf_pool = NULL,
-	.iniparam = NULL,
 };
-
-#define MIN_LCORES_NUM 4
-#define MIN_PORTS_NUM 2
 
 static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
@@ -109,20 +108,20 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     printf("    Driver Name: %s\n\n", dev_info.driver_name);
 
 	// 统计网卡数量, 分配IP地址
-	if(strcmp(dev_info.driver_name, "net_zcio") == 0 || 
-		strcmp(dev_info.driver_name, "net_vhost") == 0) {
-		virtual_nic->info[virtual_nic->nic_num].portid = port;
-		inet_pton(AF_INET, virtual_ip_list[virtual_nic->nic_num], &virtual_nic->info[virtual_nic->nic_num].ipaddr);
-		virtual_nic->info[virtual_nic->nic_num].ipaddr_str = virtual_ip_list[virtual_nic->nic_num];
-		nic_txring_init(&virtual_nic->info[virtual_nic->nic_num]);
-		virtual_nic->nic_num++;
-	}else {
-		phy_nic->info[phy_nic->nic_num].portid = port;
-		inet_pton(AF_INET, phy_ip_list[phy_nic->nic_num], &phy_nic->info[phy_nic->nic_num].ipaddr);
-		phy_nic->info[phy_nic->nic_num].ipaddr_str = phy_ip_list[phy_nic->nic_num];
-		nic_txring_init(&phy_nic->info[phy_nic->nic_num]);
-		phy_nic->nic_num++;
-	}
+	// if(strcmp(dev_info.driver_name, "net_zcio") == 0 || 
+	// 	strcmp(dev_info.driver_name, "net_vhost") == 0) {
+	// 	virtual_nic->info[virtual_nic->nic_num].portid = port;
+	// 	inet_pton(AF_INET, virtual_ip_list[virtual_nic->nic_num], &virtual_nic->info[virtual_nic->nic_num].ipaddr);
+	// 	virtual_nic->info[virtual_nic->nic_num].ipaddr_str = virtual_ip_list[virtual_nic->nic_num];
+	// 	nic_txring_init(&virtual_nic->info[virtual_nic->nic_num]);
+	// 	virtual_nic->nic_num++;
+	// }else {
+	// 	phy_nic->info[phy_nic->nic_num].portid = port;
+	// 	inet_pton(AF_INET, phy_ip_list[phy_nic->nic_num], &phy_nic->info[phy_nic->nic_num].ipaddr);
+	// 	phy_nic->info[phy_nic->nic_num].ipaddr_str = phy_ip_list[phy_nic->nic_num];
+	// 	nic_txring_init(&phy_nic->info[phy_nic->nic_num]);
+	// 	phy_nic->nic_num++;
+	// }
 	
 	return 0;
 }
@@ -179,13 +178,96 @@ void route_table_init(void)
 
 static void parse_inifile(int _argc, char **_argv)
 {
-	global_cfg.iniparam = iniparser_load(_argv[1]);
+	int argc = 1;
+	char *argv[32] = {_argv[0]};
 
-	int argc = 0;
-	char **argv = global_cfg.dpdk_argv;
-	argv[argc++] = _argv[0];
+	char lcore_list[64];
+	char memory[64];
+	char proc_type[64];
+	char no_pci[] = "--no-pci";
+	char no_shvdev[] = "--no-shvdev";
+	uint16_t nb_vdevs = 0;
+	uint16_t vdev_list[RTE_MAX_ETHPORTS];
+	char vdev_param[RTE_MAX_ETHPORTS][128];
+	dictionary *iniparam = iniparser_load(_argv[1]);
 
+	const char *strvalue;
+	char *tmpvalue;
+	int intvalue;
+
+	strvalue = iniparser_getstring(iniparam, "dpdk:lcore_list", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No lcore_list\n");
+	sprintf(lcore_list, "-l %s", strvalue);
+	argv[argc++] = lcore_list;
+
+	strvalue = iniparser_getstring(iniparam, "dpdk:memory", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No memory\n");
+	sprintf(memory, "-m %s", strvalue);
+	argv[argc++] = memory;
+
+	strvalue = iniparser_getstring(iniparam, "dpdk:proc_type", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No proc_type\n");
+	sprintf(proc_type, "--proc-type=%s", strvalue);
+	argv[argc++] = proc_type;
+
+	intvalue = iniparser_getint(iniparam, "dpdk:no_pci", 0);
+	if(intvalue == 1)
+		argv[argc++] = no_pci;
 	
+	intvalue = iniparser_getint(iniparam, "dpdk:no_shvdev", 0);
+	if(intvalue == 1)
+		argv[argc++] = no_shvdev;
+
+	/* vdev_list */
+	char *token;
+	strvalue = iniparser_getstring(iniparam, "dpdk:vdev_list", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No vdev_list\n");
+	tmpvalue = strdup(strvalue);
+	token = strtok(tmpvalue, ",");
+	while(token != NULL) {
+		if(nb_vdevs >= RTE_MAX_ETHPORTS)
+			rte_exit(EXIT_FAILURE, "Error: vdev_list is too long\n");
+		vdev_list[nb_vdevs++] = (uint16_t)atoi(token);
+		token = strtok(NULL, ",");
+	}
+	free(tmpvalue);
+
+	/* pdev_ipaddr */
+	int count = 0;
+	strvalue = iniparser_getstring(iniparam, "dpdk:pdev_ipaddr", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No pdev_ipaddr\n");
+	tmpvalue = strdup(strvalue);
+	token = strtok(tmpvalue, ",");
+	while(token != NULL) {
+		global_cfg.pdev_ipaddr_table[count++] = (uint32_t)inet_addr(token);
+		token = strtok(NULL, ",");
+	}
+	free(tmpvalue);
+
+	/* vdevX */
+	char vdev_key[64];
+	for(int i = 0; i < nb_vdevs; i++) {
+		sprintf(vdev_key, "vdev%d:vdev_param", i);
+		strvalue = iniparser_getstring(iniparam, vdev_key, NULL);
+		if(strvalue == NULL)
+			rte_exit(EXIT_FAILURE, "Error: No vdev_param in vdev%d\n", i);
+		sprintf(vdev_param[i], "--vdev=%s", strvalue);
+		argv[argc++] = vdev_param[i];
+
+		sprintf(vdev_key, "vdev%d:ipaddr", i);
+		strvalue = iniparser_getstring(iniparam, vdev_key, NULL);
+		global_cfg.vdev_ipaddr_table[i] = (uint32_t)inet_addr(strvalue);
+	}
+
+	for(int i = 0; i < argc; i++)
+		printf("%s\n", argv[i]);
+	
+	rte_exit(EXIT_SUCCESS, "Success: parse ini file\n");
 }
 
 int virtual_host_init(int argc, char **argv)
@@ -201,11 +283,6 @@ int virtual_host_init(int argc, char **argv)
 	unsigned int nb_ports;
 	unsigned int worker_id;
 	struct rte_mempool *mbuf_pool;
-	
-	// eal环境初始化
-	ret = rte_eal_init(argc, argv);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
 	
 	// 工作核心数量
 	nb_lcores = rte_lcore_count();
