@@ -154,7 +154,7 @@ static void route_table_init(void)
 	int ret = 0;
 	uint32_t route_ipaddr;
 	uint8_t masklen;
-	uint16_t outif_portid;
+	uint64_t out_nic_info;
 	struct rte_fib *fib;
 	struct rte_fib_conf conf = {0};
 	struct nic *vnic = &global_cfg.virtual_nic;
@@ -164,7 +164,7 @@ static void route_table_init(void)
 	conf.default_nh = 0;
 	conf.max_routes = 256;
 	conf.rib_ext_sz = 0;
-	conf.dir24_8.nh_sz = RTE_FIB_DIR24_8_2B;
+	conf.dir24_8.nh_sz = RTE_FIB_DIR24_8_8B;
 	conf.dir24_8.num_tbl8 = 32;
 
 	fib = rte_fib_create("HostRouter", -1, &conf);
@@ -179,8 +179,8 @@ static void route_table_init(void)
 	for(int i = 0; i < vnic->nic_num; i++) {
 		route_ipaddr = vnic->info[i].ipaddr;
 		masklen = leading_ones(vnic->info[i].netmask);
-		outif_portid = vnic->info[i].portid;
-		ret = rte_fib_add(fib, route_ipaddr, masklen, outif_portid);
+		out_nic_info = (uint64_t)&(vnic->info[i]);
+		ret = rte_fib_add(fib, route_ipaddr, masklen, out_nic_info);
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE, "Error: Failed to add route\n");
 	}
@@ -189,8 +189,8 @@ static void route_table_init(void)
 	for(int i = 0; i < pnic->nic_num; i++) {
 		route_ipaddr = pnic->info[i].ipaddr;
 		masklen = leading_ones(pnic->info[i].netmask);
-		outif_portid = pnic->info[i].portid;
-		ret = rte_fib_add(fib, route_ipaddr, masklen, outif_portid);
+		out_nic_info = (uint64_t)&(pnic->info[i]);
+		ret = rte_fib_add(fib, route_ipaddr, masklen, out_nic_info);
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE, "Error: Failed to add route\n");
 	}
