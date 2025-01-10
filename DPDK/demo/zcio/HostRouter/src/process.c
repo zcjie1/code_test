@@ -11,37 +11,37 @@ void flush_cache(char *start, char *end) {
 
 struct nic_info* find_next_port(struct rte_mbuf *m)
 {
-    struct route_table *table = &global_cfg.rtable;
-    struct rte_ether_hdr *eth = mbuf_eth_hdr(m);
-    struct arphdr *arph = NULL;
-    struct rte_ipv4_hdr *ipv4_hdr = NULL;
-    uint32_t srcip = 0;
-    uint32_t dstip = 0;
-    // uint32_t ip_id;
-    struct in_addr sip;
-    struct in_addr dip;
+    // struct route_table *table = &global_cfg.rtable;
+    // struct rte_ether_hdr *eth = mbuf_eth_hdr(m);
+    // struct arphdr *arph = NULL;
+    // struct rte_ipv4_hdr *ipv4_hdr = NULL;
+    // uint32_t srcip = 0;
+    // uint32_t dstip = 0;
+    // // uint32_t ip_id;
+    // struct in_addr sip;
+    // struct in_addr dip;
 
-    if(eth->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
-        arph = mbuf_arphdr(m);
-        srcip = arph->ar_sip;
-        dstip = arph->ar_tip;
-        printf("receive arp request\n");
-        unsigned char *bytes = (unsigned char *)&srcip;
-        printf("源IP地址: %u.%u.%u.%u\n", bytes[0], bytes[1], bytes[2], bytes[3]);
-    }else {
-        ipv4_hdr = mbuf_ip_hdr(m);
-        dstip = ipv4_hdr->dst_addr;
-        // ip_id = ipv4_hdr->packet_id;
-    }
+    // if(eth->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
+    //     arph = mbuf_arphdr(m);
+    //     srcip = arph->ar_sip;
+    //     dstip = arph->ar_tip;
+    //     printf("receive arp request\n");
+    //     unsigned char *bytes = (unsigned char *)&srcip;
+    //     printf("源IP地址: %u.%u.%u.%u\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+    // }else {
+    //     ipv4_hdr = mbuf_ip_hdr(m);
+    //     dstip = ipv4_hdr->dst_addr;
+    //     // ip_id = ipv4_hdr->packet_id;
+    // }
 
-    unsigned char *bytes = (unsigned char *)&dstip;
-    printf("目的IP地址: %u.%u.%u.%u\n", bytes[0], bytes[1], bytes[2], bytes[3]);
+    // unsigned char *bytes = (unsigned char *)&dstip;
+    // printf("目的IP地址: %u.%u.%u.%u\n", bytes[0], bytes[1], bytes[2], bytes[3]);
 
-    for(int i = 0; i < table->entry_num; i++) {
-        if(table->entry[i].ipaddr == dstip) {
-            return table->entry[i].info;
-        }
-    }
+    // for(int i = 0; i < table->entry_num; i++) {
+    //     if(table->entry[i].ipaddr == dstip) {
+    //         return table->entry[i].info;
+    //     }
+    // }
     
     return NULL; 
 }
@@ -107,7 +107,6 @@ int phy_nic_receive(void *arg __rte_unused)
         return 0;
     
     uint16_t portid = global_cfg.phy_nic.info[0].portid;
-    // printf("Start receiving packet from port %u\n", portid);
     struct rte_mbuf *bufs[MAX_BURST_NUM];
     uint16_t nb_rx;
     int ret = 0;
@@ -119,7 +118,6 @@ int phy_nic_receive(void *arg __rte_unused)
         nb_rx = rte_eth_rx_burst(portid, 0, bufs, MAX_BURST_NUM);
         if (nb_rx == 0)
             continue;
-        // printf("Receive %d packets from phy nic\n", nb_rx);
         for(int i = 0; i < nb_rx; i++) {
             eth_hdr = mbuf_eth_hdr(bufs[i]);
             if(eth_hdr->ether_type == htons(RTE_ETHER_TYPE_ARP)) {
@@ -142,7 +140,6 @@ int phy_nic_receive(void *arg __rte_unused)
                     rte_pktmbuf_free(bufs[i]);
                     continue;
                 }
-                // printf("Receive %lu packet from phy nic\n", ++recv_pkt_num);
             }else {
                 rte_pktmbuf_free(bufs[i]);
             }

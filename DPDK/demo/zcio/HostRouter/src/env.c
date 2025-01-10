@@ -9,6 +9,29 @@ struct config global_cfg = {
 	.mbuf_pool = NULL,
 };
 
+static inline int leading_ones(uint32_t n) {
+    int count = 0;
+    while (n & 0x80000000) {
+        count++;
+        n <<= 1;
+    }
+    return count;
+}
+
+static inline void nic_txring_init(struct nic_info *nic)
+{
+	nic->tx_name = (char *)malloc(64);
+	sprintf(nic->tx_name, "tx_ring_%d", nic->portid);
+	nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
+			rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+}
+
+static inline void nic_txring_release(struct nic_info *nic)
+{
+	rte_ring_free(nic->tx_ring);
+	free(nic->tx_name);
+}
+
 static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_conf port_conf = {0};
@@ -17,8 +40,8 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t nb_txd = TX_RING_SIZE;
 	int ret;
 	char device_name[256];
-	struct nic *virtual_nic = &global_cfg.virtual_nic;
-	struct nic *phy_nic = &global_cfg.phy_nic;
+	struct nic *vnic = &global_cfg.virtual_nic;
+	struct nic *pnic = &global_cfg.phy_nic;
 	struct rte_eth_rxconf rxconf;
 	struct rte_eth_txconf txconf;
 	
@@ -30,7 +53,7 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	}
 
 	ret = rte_eth_dev_info_get(port, &dev_info);
-	if (ret != 0) {
+	if (ret < 0) {
 		printf("Error during getting device (port %u) info: %s\n",
 				port, strerror(-ret));
 		return ret;
@@ -90,7 +113,7 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return ret;
 	}
 		
-	// 输出网卡信息
+	// output nic information
 	struct rte_ether_addr addr;
 	ret = rte_eth_macaddr_get(port, &addr);
 	if (ret < 0) {
@@ -107,73 +130,72 @@ static int port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     printf("    Device Name: %s\n", device_name);
     printf("    Driver Name: %s\n\n", dev_info.driver_name);
 
-	// 统计网卡数量, 分配IP地址
-	// if(strcmp(dev_info.driver_name, "net_zcio") == 0 || 
-	// 	strcmp(dev_info.driver_name, "net_vhost") == 0) {
-	// 	virtual_nic->info[virtual_nic->nic_num].portid = port;
-	// 	inet_pton(AF_INET, virtual_ip_list[virtual_nic->nic_num], &virtual_nic->info[virtual_nic->nic_num].ipaddr);
-	// 	virtual_nic->info[virtual_nic->nic_num].ipaddr_str = virtual_ip_list[virtual_nic->nic_num];
-	// 	nic_txring_init(&virtual_nic->info[virtual_nic->nic_num]);
-	// 	virtual_nic->nic_num++;
-	// }else {
-	// 	phy_nic->info[phy_nic->nic_num].portid = port;
-	// 	inet_pton(AF_INET, phy_ip_list[phy_nic->nic_num], &phy_nic->info[phy_nic->nic_num].ipaddr);
-	// 	phy_nic->info[phy_nic->nic_num].ipaddr_str = phy_ip_list[phy_nic->nic_num];
-	// 	nic_txring_init(&phy_nic->info[phy_nic->nic_num]);
-	// 	phy_nic->nic_num++;
-	// }
+	// allocate ip address
+	if(strcmp(dev_info.driver_name, "net_zcio") == 0 || 
+		strcmp(dev_info.driver_name, "net_vhost") == 0) {
+		vnic->info[vnic->nic_num].portid = port;
+		vnic->info[vnic->nic_num].ipaddr = global_cfg.vdev_ipaddr_table[vnic->nic_num];
+		vnic->info[vnic->nic_num].netmask = global_cfg.vdev_netmask_table[vnic->nic_num];
+		nic_txring_init(&vnic->info[vnic->nic_num]);
+		vnic->nic_num++;
+	}else {
+		pnic->info[pnic->nic_num].portid = port;
+		pnic->info[pnic->nic_num].ipaddr = global_cfg.pdev_ipaddr_table[pnic->nic_num];
+		pnic->info[pnic->nic_num].netmask = global_cfg.pdev_netmask_table[pnic->nic_num];
+		nic_txring_init(&pnic->info[pnic->nic_num]);
+		pnic->nic_num++;
+	}
 	
 	return 0;
 }
 
-void nic_txring_init(struct nic_info *nic)
+static void route_table_init(void)
 {
-	nic->tx_name = (char *)malloc(64);
-	sprintf(nic->tx_name, "tx_ring_%d", nic->portid);
-	if(nic->portid == 0) {
-		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
-			rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
-	}else {
-		nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
-			rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
-	}
-}
+	int ret = 0;
+	uint32_t route_ipaddr;
+	uint8_t masklen;
+	uint16_t outif_portid;
+	struct rte_fib *fib;
+	struct rte_fib_conf conf = {0};
+	struct nic *vnic = &global_cfg.virtual_nic;
+	struct nic *pnic = &global_cfg.phy_nic;
 
-void nic_txring_release(struct nic_info *nic)
-{
-	rte_ring_free(nic->tx_ring);
-	free(nic->tx_name);
-}
+	conf.type = RTE_FIB_DIR24_8;
+	conf.default_nh = 0;
+	conf.max_routes = 256;
+	conf.rib_ext_sz = 0;
+	conf.dir24_8.nh_sz = RTE_FIB_DIR24_8_2B;
+	conf.dir24_8.num_tbl8 = 32;
 
-void route_table_init(void)
-{
-	struct route_entry *entry;
-	uint32_t ipaddr;
-	uint16_t portid;
+	fib = rte_fib_create("HostRouter", -1, &conf);
+	if (fib == NULL)
+		rte_exit(EXIT_FAILURE, "Error: Failed to create FIB\n");
 	
-	struct route_table *rtable = &global_cfg.rtable;
-	struct nic *virtual_nic = &global_cfg.virtual_nic;
-	struct nic *phy_nic = &global_cfg.phy_nic;
+	ret = rte_fib_select_lookup(fib, RTE_FIB_LOOKUP_DEFAULT);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE, "Error: Failed to select lookup function\n");
+	
+	// vnic route rules
+	for(int i = 0; i < vnic->nic_num; i++) {
+		route_ipaddr = vnic->info[i].ipaddr;
+		masklen = leading_ones(vnic->info[i].netmask);
+		outif_portid = vnic->info[i].portid;
+		ret = rte_fib_add(fib, route_ipaddr, masklen, outif_portid);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Error: Failed to add route\n");
+	}
 
-	/* 初始化路由表 */
-	entry = &rtable->entry[rtable->entry_num];
-	
-	// 物理网卡路由
-	for(int i = 0; i < phy_nic->nic_num; i++) {
-		entry = &rtable->entry[rtable->entry_num];
-		entry->ipaddr = phy_nic->info[i].ipaddr;
-		entry->info = &phy_nic->info[i];
-		rtable->entry_num++;
+	// pnic route rules
+	for(int i = 0; i < pnic->nic_num; i++) {
+		route_ipaddr = pnic->info[i].ipaddr;
+		masklen = leading_ones(pnic->info[i].netmask);
+		outif_portid = pnic->info[i].portid;
+		ret = rte_fib_add(fib, route_ipaddr, masklen, outif_portid);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Error: Failed to add route\n");
 	}
-	
-	// virtual 网卡路由
-	for(int i = 0; i < virtual_nic->nic_num; i++) {
-		entry = &rtable->entry[rtable->entry_num];
-		entry->ipaddr = virtual_nic->info[i].ipaddr;
-		entry->info = &virtual_nic->info[i];
-		rtable->entry_num++;
-	}
-	// printf("route table entry_num: %u\n", rtable->entry_num);
+
+	global_cfg.fib = fib;
 }
 
 static void parse_inifile(int _argc, char **_argv)
@@ -236,19 +258,6 @@ static void parse_inifile(int _argc, char **_argv)
 	}
 	free(tmpvalue);
 
-	/* pdev_ipaddr */
-	int count = 0;
-	strvalue = iniparser_getstring(iniparam, "dpdk:pdev_ipaddr", NULL);
-	if(strvalue == NULL)
-		rte_exit(EXIT_FAILURE, "Error: No pdev_ipaddr\n");
-	tmpvalue = strdup(strvalue);
-	token = strtok(tmpvalue, ",");
-	while(token != NULL) {
-		global_cfg.pdev_ipaddr_table[count++] = (uint32_t)inet_addr(token);
-		token = strtok(NULL, ",");
-	}
-	free(tmpvalue);
-
 	/* vdevX */
 	char vdev_key[64];
 	for(int i = 0; i < nb_vdevs; i++) {
@@ -261,13 +270,59 @@ static void parse_inifile(int _argc, char **_argv)
 
 		sprintf(vdev_key, "vdev%d:ipaddr", i);
 		strvalue = iniparser_getstring(iniparam, vdev_key, NULL);
+		if(strvalue == NULL)
+			rte_exit(EXIT_FAILURE, "Error: No ipaddr in vdev%d\n", i);
 		global_cfg.vdev_ipaddr_table[i] = (uint32_t)inet_addr(strvalue);
+		global_cfg.vdev_ipaddr_table[i] = ntohl(global_cfg.vdev_ipaddr_table[i]);
+
+		sprintf(vdev_key, "vdev%d:netmask", i);
+		strvalue = iniparser_getstring(iniparam, vdev_key, NULL);
+		if(strvalue == NULL)
+			rte_exit(EXIT_FAILURE, "Error: No netmask in vdev%d\n", i);
+		global_cfg.vdev_netmask_table[i] = (uint32_t)inet_addr(strvalue);
+		global_cfg.vdev_netmask_table[i] = ntohl(global_cfg.vdev_netmask_table[i]);
 	}
 
-	for(int i = 0; i < argc; i++)
-		printf("%s\n", argv[i]);
+	/* port */
+	strvalue = iniparser_getstring(iniparam, "port:ipaddr", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No port ipaddr\n");
+	global_cfg.pdev_ipaddr_table[0] = (uint32_t)inet_addr(strvalue);
+	global_cfg.pdev_ipaddr_table[0] = ntohl(global_cfg.pdev_ipaddr_table[0]);
+	strvalue = iniparser_getstring(iniparam, "port:netmask", NULL);
+	if(strvalue == NULL)
+		rte_exit(EXIT_FAILURE, "Error: No port netmask\n");
+	global_cfg.pdev_netmask_table[0] = (uint32_t)inet_addr(strvalue);
+	global_cfg.pdev_netmask_table[0] = ntohl(global_cfg.pdev_netmask_table[0]);
+
+	int ret = rte_eal_init(argc, argv);
+	if(ret < 0)
+		rte_exit(EXIT_FAILURE, "Error: EAL init failed\n");
 	
-	rte_exit(EXIT_SUCCESS, "Success: parse ini file\n");
+	iniparser_freedict(iniparam);
+}
+
+int virtual_host_destroy(void)
+{
+	int ret = 0;
+	uint16_t portid;
+	RTE_ETH_FOREACH_DEV(portid) {
+		printf("Closing port %d...\n", portid);
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%d, port=%d\n",
+			       ret, portid);
+		rte_eth_dev_close(portid);
+		printf("Done\n");
+	}
+
+	for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++)
+		nic_txring_release(&global_cfg.virtual_nic.info[i]);
+	for(int i = 0; i < global_cfg.phy_nic.nic_num; i++)
+		nic_txring_release(&global_cfg.phy_nic.info[i]);
+
+	rte_mempool_free(global_cfg.mbuf_pool);
+	rte_fib_free(global_cfg.fib);
 }
 
 int virtual_host_init(int argc, char **argv)
@@ -275,7 +330,7 @@ int virtual_host_init(int argc, char **argv)
 	if(argc < 2)
 		rte_exit(EXIT_FAILURE, "Error: No config file\n");
 	
-	parse_inifile(argc, argv);
+	parse_inifile(argc, argv); // contain rte_eal_init()
 
 	int ret = 0;
 	uint16_t portid;
@@ -284,29 +339,28 @@ int virtual_host_init(int argc, char **argv)
 	unsigned int worker_id;
 	struct rte_mempool *mbuf_pool;
 	
-	// 工作核心数量
+	// lcore number
 	nb_lcores = rte_lcore_count();
 	printf("Lcores Number: %u\n", nb_lcores);
 	if (nb_lcores < MIN_LCORES_NUM)
 		rte_exit(EXIT_FAILURE, "Error: Number of work cores is insufficient\n");
 	
-	// 网卡数量
+	// nic number
 	nb_ports = rte_eth_dev_count_avail();
 	printf("Ports Number: %u\n", nb_ports);
 	if (nb_ports < MIN_PORTS_NUM)
 		rte_exit(EXIT_FAILURE, "Error: Number of ports is insufficient\n");
 	
-	// 分配内存池, mbuf_pool_0 兼容 f-stack
+	// allocate memory pool, "mbuf_pool_0" to compat f-stack
 	mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool_0", 16*NUM_MBUFS*nb_ports, 
 		MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 	global_cfg.mbuf_pool = mbuf_pool;
 	
-	// 初始化网卡
 	RTE_ETH_FOREACH_DEV(portid) {
 		ret = port_init(portid, mbuf_pool);
-		if(ret != 0) {
+		if(ret < 0) {
 			global_cfg.force_quit = true;
 			printf("\nError: Fail to init port %"PRIu16"\n", portid);
 			goto out;
@@ -318,30 +372,7 @@ int virtual_host_init(int argc, char **argv)
 	return 0;
 
  out:
-	// 等待工作核心结束任务
-	rte_eal_mp_wait_lcore();
-
-	// 关闭网卡
-	RTE_ETH_FOREACH_DEV(portid) {
-		printf("Closing port %d...\n", portid);
-		ret = rte_eth_dev_stop(portid);
-		if (ret != 0)
-			printf("rte_eth_dev_stop: err=%d, port=%d\n",
-			       ret, portid);
-		rte_eth_dev_close(portid);
-		printf("Done\n");
-	}
-
-	// 释放网卡发送队列
-	for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++)
-		nic_txring_release(&global_cfg.virtual_nic.info[i]);
-	for(int i = 0; i < global_cfg.phy_nic.nic_num; i++)
-		nic_txring_release(&global_cfg.phy_nic.info[i]);
-	
-	// 释放内存池
-	rte_mempool_free(mbuf_pool);
-
-	if(ret != 0)
-		return -1;
-	return 0;
+ 	rte_eal_mp_wait_lcore();
+	virtual_host_destroy();
+	return ret;
 }
