@@ -23,7 +23,7 @@ static inline void nic_txring_init(struct nic_info *nic)
 	nic->tx_name = (char *)malloc(64);
 	sprintf(nic->tx_name, "tx_ring_%d", nic->portid);
 	nic->tx_ring = rte_ring_create(nic->tx_name, TX_RING_SIZE, 
-			rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+			rte_socket_id(), RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
 }
 
 static inline void nic_txring_release(struct nic_info *nic)
