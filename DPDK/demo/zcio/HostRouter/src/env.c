@@ -198,6 +198,48 @@ static void route_table_init(void)
 	global_cfg.fib = fib;
 }
 
+static void arp_table_init(void)
+{
+	int ret = 0;
+	struct nic *vnic = &global_cfg.virtual_nic;
+	struct nic *pnic = &global_cfg.phy_nic;
+
+	struct rte_hash *arp_table;
+	struct rte_hash_parameters hash_params = {0};
+	hash_params.name = "arp_table";
+	hash_params.entries = 128;
+	hash_params.key_len = sizeof(uint32_t);
+	hash_params.socket_id = rte_socket_id();
+	hash_params.extra_flag = RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD |
+		RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY | RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+	
+	arp_table = rte_hash_create(&hash_params);
+
+	void *ipaddr; 
+	void *macaddr;
+	for(int i = 0; i < vnic->nic_num; i++) {
+		ipaddr = malloc(sizeof(uint32_t));
+		macaddr = malloc(sizeof(struct rte_ether_addr));
+		*(uint32_t*)ipaddr =  vnic->info[i].ipaddr;
+		rte_eth_macaddr_get(vnic->info[i].portid, (struct rte_ether_addr*)macaddr);
+		ret = rte_hash_add_key_data(arp_table, ipaddr, macaddr);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Error: Failed to add arp entry\n");
+	}
+
+	for(int i = 0; i < pnic->nic_num; i++) {
+		ipaddr = malloc(sizeof(uint32_t));
+		macaddr = malloc(sizeof(struct rte_ether_addr));
+		*(uint32_t*)ipaddr =  pnic->info[i].ipaddr;
+		rte_eth_macaddr_get(pnic->info[i].portid, (struct rte_ether_addr*)macaddr);
+		ret = rte_hash_add_key_data(arp_table, ipaddr, macaddr);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Error: Failed to add arp entry\n");
+	}
+
+	global_cfg.arp_table = arp_table;
+}
+
 static void parse_inifile(int _argc, char **_argv)
 {
 	int argc = 1;
@@ -368,6 +410,7 @@ int virtual_host_init(int argc, char **argv)
 	}
 	
 	route_table_init();
+	arp_table_init();
 
 	return 0;
 

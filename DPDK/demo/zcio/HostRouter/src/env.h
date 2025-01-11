@@ -14,6 +14,8 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_fib.h>
+#include <rte_hash.h>
+#include <rte_malloc.h>
 #include "iniparser/dictionary.h"
 #include "iniparser/iniparser.h"
 
@@ -45,6 +47,7 @@ struct config {
 
 	struct rte_mempool *mbuf_pool;
 	struct rte_fib *fib;
+	struct rte_hash *arp_table;
 };
 
 int virtual_host_init(int argc, char **argv);
