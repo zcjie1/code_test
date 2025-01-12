@@ -63,7 +63,6 @@ send_arp_request(struct nic_info *if_output, uint32_t target_ip)
     struct rte_ether_addr src_mac;
     struct rte_ether_addr dst_mac;
     uint32_t sip, tip;
-    struct rte_ether_addr src_mac, dst_mac;
 
     if(target_ip == if_output->ipaddr)
         return;
