@@ -117,26 +117,29 @@ arp_ip2mac(uint32_t ip, struct rte_ether_addr *mac)
 /**
  * @brief lookup and fill dest mac of ethernet header
  * @param m packet buffer
- * @param if_input input nic
  * @param eth_type ethernet type
  * @param target_ip host-endian target ip
  * @param target_mac target mac
+ * @return output nic
  */
-static int 
-neighbour_fill_eth_hdr(struct rte_mbuf *m, struct nic_info *if_input, uint16_t eth_type, 
+static struct nic_info *
+neighbour_fill_eth_hdr(struct rte_mbuf *m, uint16_t eth_type, 
     uint32_t target_ip, struct rte_ether_addr *target_mac)
 {
     int ret = 0;
     struct nic_info *if_output;
     struct rte_ether_hdr *eth = mbuf_eth_hdr(m);
     struct rte_ether_addr src_mac;
+    int ip2mac_count = 0;
 
  ip2mac:
     // map ipaddr into macaddr
     ret = arp_ip2mac(target_ip, target_mac);
     if(ret == -ENOENT) {
         /* no arp entry in arp_table, send arp request and reprocess the packet */
-        rte_delay_us_sleep(10);
+        rte_delay_us_sleep(50);
+        if(++ip2mac_count > 4)
+            goto err;
         goto ip2mac;
     }else if(ret == -EINVAL) {
         perror("arp_table lookup error");
@@ -147,11 +150,11 @@ neighbour_fill_eth_hdr(struct rte_mbuf *m, struct nic_info *if_input, uint16_t e
     if(ret < 0)
         goto err;
     rte_eth_macaddr_get(if_output->portid, &src_mac);
-    eth_hdr_set(eth, RTE_ETHER_TYPE_ARP, &src_mac, target_mac);
-    return 0;
+    eth_hdr_set(eth, eth_type, &src_mac, target_mac);
+    return if_output;
 
  err:
-    return -1;
+    return NULL;
 }
 
 /**
@@ -176,8 +179,6 @@ arp_process(struct rte_mbuf *m, struct nic_info *if_input)
 {
 	uint32_t in_ipaddr = if_input->ipaddr;
     struct rte_hash *arp_table = global_cfg.arp_table;
-    struct nic *vnic = &global_cfg.virtual_nic;
-    struct nic *pnic = &global_cfg.phy_nic;
     
     uint32_t new_sip;
     uint32_t new_dip;
@@ -187,7 +188,6 @@ arp_process(struct rte_mbuf *m, struct nic_info *if_input)
     
     int ret = 0;
     uint32_t target_ip;
-    struct nic_info *if_output;
     
     struct arphdr *arph = mbuf_arphdr(m);
     if(arph->ar_op == htons(ARP_REQUEST)) {
@@ -229,4 +229,21 @@ arp_process(struct rte_mbuf *m, struct nic_info *if_input)
  free:
     rte_pktmbuf_free(m);
     return;
+}
+
+void
+ipv4_process(struct rte_mbuf *m, struct nic_info *if_input __rte_unused)
+{
+    int ret = 0;
+    struct nic_info *if_output;
+    struct rte_ether_hdr *eth = mbuf_eth_hdr(m);
+    struct rte_ipv4_hdr *ipv4_hdr = mbuf_ip_hdr(m);
+
+    uint32_t dst_ip = ntohl(ipv4_hdr->dst_addr);
+    if_output = neighbour_fill_eth_hdr(m, RTE_ETHER_TYPE_IPV4, dst_ip, &eth->dst_addr);
+    if(if_output == NULL)
+        rte_pktmbuf_free(m);
+    ret = rte_ring_enqueue(if_output->tx_ring, m);
+    if(ret < 0)
+        rte_pktmbuf_free(m);
 }

@@ -23,5 +23,6 @@ struct arphdr {
 #define mbuf_ip_hdr(m) rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr*, sizeof(struct rte_ether_hdr))
 
 void arp_process(struct rte_mbuf *m, struct nic_info *if_input);
+void ipv4_process(struct rte_mbuf *m, struct nic_info *if_input);
 
 #endif // !__PROTOCOL_H__

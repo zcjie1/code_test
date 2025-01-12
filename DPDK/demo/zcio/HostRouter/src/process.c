@@ -14,6 +14,12 @@ static void process_packets(struct mbufs *packets)
         eth_hdr = mbuf_eth_hdr(bufs[i]);
         if(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))
             arp_process(bufs[i], input_nic);
+        else if(eth_hdr->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
+            ipv4_process(bufs[i], input_nic);
+        else {
+            printf("unsupported ether type: %x\n", eth_hdr->ether_type);
+            rte_pktmbuf_free(bufs[i]);
+        }
     }
 }
 
