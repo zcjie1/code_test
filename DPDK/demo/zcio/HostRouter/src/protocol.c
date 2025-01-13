@@ -71,7 +71,7 @@ send_arp_request(struct nic_info *if_output, uint32_t target_ip)
     eth = mbuf_eth_hdr(arp_request);
     sip = if_output->ipaddr;
     tip = target_ip;
-    rte_eth_macaddr_get(if_output->portid, &src_mac);
+    rte_ether_addr_copy(&eth->src_addr, &src_mac);
     memset((void *)&dst_mac, 0, sizeof(dst_mac));
     arp_set_arphdr(arp_hdr, ARP_REQUEST, sip, tip, &src_mac, &dst_mac);
     eth_hdr_set(eth, RTE_ETHER_TYPE_ARP, &src_mac, &broadcast_addr);
@@ -174,6 +174,18 @@ arp_table_add(uint32_t ip, struct rte_ether_addr *mac)
     rte_ether_addr_copy(mac, macaddr);
     rte_hash_add_key_data(arp_table, (void *)ipaddr, (void *)macaddr);
 }
+
+void
+mac_forward_table_add(struct nic_info *if_input, struct rte_ether_addr *mac)
+{
+    struct rte_hash *mac_forward_table = global_cfg.mac_forward_table;
+
+    struct nic_info *if_output;
+    struct rte_ether_addr *macaddr = malloc(sizeof(struct rte_ether_addr));
+    if_output = if_input;
+    rte_ether_addr_copy(mac, macaddr);
+    rte_hash_add_key_data(mac_forward_table, (void *)macaddr, (void *)if_output);
+}
 void 
 arp_process(struct rte_mbuf *m, struct nic_info *if_input)
 {
@@ -189,35 +201,63 @@ arp_process(struct rte_mbuf *m, struct nic_info *if_input)
     int ret = 0;
     uint32_t target_ip;
     
+    eth = mbuf_eth_hdr(m);
     struct arphdr *arph = mbuf_arphdr(m);
-    if(arph->ar_op == htons(ARP_REQUEST)) {
-        eth = mbuf_eth_hdr(m);
 
+    // Gratuitous ARP
+    if(arph->ar_sip == arph->ar_tip && arph->ar_sip == htobe32(in_ipaddr)) {
+        printf("Error: IP Conflict with Gratuitous ARP\n");
+        goto free;
+    }
+
+    if(arph->ar_op == htons(ARP_REQUEST)) {
         // add the sip and smac into arp_table
         arp_table_add(ntohl(arph->ar_sip), &arph->ar_sha);
 
-        // if arp->tip != if_input's ipaddr
-        if(arph->ar_tip != htobe32(in_ipaddr))
+        // add the smac into mac_forward_table
+        mac_forward_table_add(if_input, &arph->ar_sha);
+
+        // if arp->tip == if_input's ipaddr
+        if(arph->ar_tip == htobe32(in_ipaddr)) {
+            // fill the arp header
+            new_sip = in_ipaddr;
+            new_dip = ntohl(arph->ar_sip);
+            rte_eth_macaddr_get(if_input->portid, &new_src_mac);
+            rte_ether_addr_copy(&arph->ar_sha, &new_dst_mac);
+            arp_set_arphdr(arph, ARP_REPLY, new_sip, new_dip, &new_src_mac, &new_dst_mac);
+
+            // fill ether header
+            rte_ether_addr_copy(&eth->src_addr, &new_dst_mac);
+            eth_hdr_set(eth, RTE_ETHER_TYPE_ARP, &new_src_mac, &new_dst_mac);
+
+            // send the reply
+            ret = rte_ring_enqueue(if_input->tx_ring, m);
+            if(ret < 0)
+                goto free;
+        }else { // broadcast the request
+            target_ip = ntohl(arph->ar_tip);
+            for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++) {
+                if(global_cfg.virtual_nic.info[i].portid == if_input->portid)
+                    continue;
+                send_arp_request(&global_cfg.virtual_nic.info[i], target_ip);
+            }
+            for(int i = 0; i < global_cfg.phy_nic.nic_num; i++) {
+                if(global_cfg.phy_nic.info[i].portid == if_input->portid)
+                    continue;
+                send_arp_request(&global_cfg.phy_nic.info[i], target_ip);
+            }
             goto free;
+        }
 
-        // fill the arp header
-        new_sip = in_ipaddr;
-        new_dip = ntohl(arph->ar_sip);
-        rte_eth_macaddr_get(if_input->portid, &new_src_mac);
-        rte_ether_addr_copy(&arph->ar_sha, &new_dst_mac);
-        arp_set_arphdr(arph, ARP_REPLY, new_sip, new_dip, &new_src_mac, &new_dst_mac);
-
-        // fill ether header
-        rte_ether_addr_copy(&eth->src_addr, &new_dst_mac);
-        eth_hdr_set(eth, RTE_ETHER_TYPE_ARP, &new_src_mac, &new_dst_mac);
-
-        // send the reply
-        ret = rte_ring_enqueue(if_input->tx_ring, m);
-        if(ret < 0)
-            goto free;
-        
     }else if (arph->ar_op == htons(ARP_REPLY)) {
+        printf("arp reply: sip = %x, tip = %x\n", ntohl(arph->ar_sip), ntohl(arph->ar_tip));
         arp_table_add(ntohl(arph->ar_sip), &arph->ar_sha);
+        // broadcast the reply
+        for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++) {
+            if(global_cfg.virtual_nic.info[i].portid == if_input->portid)
+                continue;
+            
+        }
         goto free;
     }else {
         perror("unknown arp op");

@@ -240,6 +240,48 @@ static void arp_table_init(void)
 	global_cfg.arp_table = arp_table;
 }
 
+static void mac_forward_table_init(void)
+{
+	int ret = 0;
+	struct nic *vnic = &global_cfg.virtual_nic;
+	struct nic *pnic = &global_cfg.phy_nic;
+
+	struct rte_hash *mac_forward_table;
+	struct rte_hash_parameters hash_params = {0};
+	hash_params.name = "mac_forward_table";
+	hash_params.entries = 128;
+	hash_params.key_len = 6;
+	hash_params.socket_id = rte_socket_id();
+	hash_params.extra_flag = RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD |
+		RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY | RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+	
+	mac_forward_table = rte_hash_create(&hash_params);
+
+	struct nic_info *if_output;
+	void *macaddr;
+	for(int i = 0; i < vnic->nic_num; i++) {
+		// if_output = malloc(sizeof(struct nic_info));
+		macaddr = malloc(sizeof(struct rte_ether_addr));
+		if_output = &vnic->info[i];
+		rte_eth_macaddr_get(vnic->info[i].portid, (struct rte_ether_addr*)macaddr);
+		ret = rte_hash_add_key_data(mac_forward_table, macaddr, if_output);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Error: Failed to add mac_forward entry\n");
+	}
+
+	for(int i = 0; i < pnic->nic_num; i++) {
+		// if_output = malloc(sizeof(struct nic_info*));
+		macaddr = malloc(sizeof(struct rte_ether_addr));
+		if_output = &pnic->info[i];
+		rte_eth_macaddr_get(pnic->info[i].portid, (struct rte_ether_addr*)macaddr);
+		ret = rte_hash_add_key_data(mac_forward_table, macaddr, if_output);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Error: Failed to add mac_forward entry\n");
+	}
+
+	global_cfg.mac_forward_table = mac_forward_table;
+}
+
 static void parse_inifile(int _argc, char **_argv)
 {
 	int argc = 1;
@@ -365,6 +407,8 @@ int virtual_host_destroy(void)
 
 	rte_mempool_free(global_cfg.mbuf_pool);
 	rte_fib_free(global_cfg.fib);
+	rte_hash_free(global_cfg.arp_table);
+	rte_hash_free(global_cfg.mac_forward_table);
 }
 
 int virtual_host_init(int argc, char **argv)
@@ -394,7 +438,7 @@ int virtual_host_init(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Error: Number of ports is insufficient\n");
 	
 	// allocate memory pool, "mbuf_pool_0" to compat f-stack
-	mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool_0", 16*NUM_MBUFS*nb_ports, 
+	mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool_0", 32*NUM_MBUFS*nb_ports, 
 		MBUF_CACHE_SIZE, 0, DEFAULT_PKTMBUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
@@ -409,6 +453,7 @@ int virtual_host_init(int argc, char **argv)
 		}
 	}
 	
+	mac_forward_table_init();
 	route_table_init();
 	arp_table_init();
 

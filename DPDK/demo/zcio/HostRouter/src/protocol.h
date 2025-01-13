@@ -22,6 +22,7 @@ struct arphdr {
 #define mbuf_arphdr(m) rte_pktmbuf_mtod_offset(m, struct arphdr*, sizeof(struct rte_ether_hdr))
 #define mbuf_ip_hdr(m) rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr*, sizeof(struct rte_ether_hdr))
 
+void mac_forward_table_add(struct nic_info *if_input, struct rte_ether_addr *mac);
 void arp_process(struct rte_mbuf *m, struct nic_info *if_input);
 void ipv4_process(struct rte_mbuf *m, struct nic_info *if_input);
 

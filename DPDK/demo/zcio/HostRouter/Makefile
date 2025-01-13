@@ -25,10 +25,10 @@ static: build/$(APP)-static
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += $(shell $(PKGCONF) --cflags libdpdk)
 # Add flag to allow experimental API as l2fwd uses rte_ethdev_set_ptype API
-CFLAGS += -O3 -DALLOW_EXPERIMENTAL_API
-CFLAGS += -g -Wno-address-of-packed-member
-LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
-LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
+CFLAGS += -O3 -g -gdwarf-2 -Wno-address-of-packed-member
+LDFLAGS_SHARED += $(shell $(PKGCONF) --libs libdpdk)
+LDFLAGS_STATIC += $(shell $(PKGCONF) --static --libs libdpdk)
+LDFLAGS_STATIC += -Wl,--no-whole-archive -lrt -lm -ldl -lcrypto -pthread -lnuma
 
 ifeq ($(MAKECMDGOALS),static)
 # check for broken pkg-config
@@ -39,10 +39,10 @@ endif
 endif
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE)  | build
-	@$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
+	cc $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
 build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
-	@$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
+	cc $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
 build:
 	@mkdir -p $@

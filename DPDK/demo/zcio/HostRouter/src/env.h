@@ -48,6 +48,7 @@ struct config {
 	struct rte_mempool *mbuf_pool;
 	struct rte_fib *fib;
 	struct rte_hash *arp_table;
+	struct rte_hash *mac_forward_table;
 };
 
 int virtual_host_init(int argc, char **argv);

@@ -36,8 +36,19 @@ int main(int argc, char *argv[])
 	ret = virtual_host_init(argc, argv);
 	if (ret < 0)
 		return -1;
+	
+	// struct rte_ether_addr mac_addr;
+	// struct nic_info *nic;
+	// rte_eth_macaddr_get(global_cfg.virtual_nic.info[0].portid, &mac_addr);
+	// ret = rte_hash_lookup_data(global_cfg.mac_forward_table, (void *)&mac_addr, (void **)&nic);
+	// if(nic->portid == global_cfg.virtual_nic.info[0].portid)
+	// 	printf("hash success\n");
+	// else
+	// 	printf("hash fail\n");
+	
+	// rte_exit(0, "Exit Successfully\n");
 		
-	printf("\nStart Processing...\n\n");
+	// printf("\nStart Processing...\n\n");
 
 	// assign worker
 	for(int i = 0; i < global_cfg.virtual_nic.nic_num; i++) {

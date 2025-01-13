@@ -16,14 +16,11 @@ scapy:
 
 zcio_host: clean
 	@sudo HostRouter/build/router \
-		HostRouter/config.ini
+		HostRouter/zcio.ini
 
 vhost_host: clean
 	@sudo HostRouter/build/router \
-		-l 32-39 -m 6144\
-		--no-pci --no-shvdev\
-		--vdev=eth_vhost0,iface=/tmp/vhost0 \
-		--vdev=eth_vhost1,iface=/tmp/vhost1 \
+		HostRouter/virtio.ini
 
 zcio_dperf_server:
 	@docker run \
@@ -45,6 +42,14 @@ zcio_dperf_client:
 		zcio_dperf dperf \
 			-c /tmp/dperf_client.conf
 
+zcio_fstack_server:
+	cd f-stack && \
+	make zcio_server
+
+zcio_fstack_client:
+	cd f-stack && \
+	make zcio_client
+
 virtio_dperf_server:
 	@docker run \
 		-it --rm  \
@@ -65,17 +70,22 @@ virtio_dperf_client:
 		zcio_dperf dperf \
 			-c /tmp/client.conf
 
+virtio_fstack_server:
+	cd f-stack && \
+	make demo_server
+
+virtio_fstack_client:
+	cd f-stack && \
+	make demo_client
+
 router:
 	cd HostRouter && \
 	make clean && \
-	bear --output $(COMPILE_COMMANDS) --append -- make -j64
+	bear --output $(COMPILE_COMMANDS) --append -- make static -j64
 
 dpdk_install:
-	cd /home/zcj/dpdk-custom && \
-	cd build && \
-	ninja -j64 && \
-	sudo meson install && \
-	sudo ldconfig
+	cd f-stack && \
+	make dpdk_install
 
 dpdk_env_image:
 	cd $(DPDK_ENV_PATH) && \
